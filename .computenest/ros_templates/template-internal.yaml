@@ -278,7 +278,7 @@ Parameters:
     Label:
       zh-cn: Pod 网络 CIDR
       en: Pod Network CIDR
-    AssociationProperty: 'ALIYUN::CS::ManagedKubernetesCluster::PodCidr'
+    AssociationProperty: 'ALIYUN::CS::ManagedKubernetesCluster::ServiceCidr'
     Default: 10.0.0.0/16
   ServiceCidr:
     Type: String
@@ -499,7 +499,7 @@ Resources:
         Fn::GetAtt:
           - ManagedKubernetesCluster
           - ClusterId
-      HelmChartUrl: oci://compute-nest-chart-registry.cn-hangzhou.cr.aliyuncs.com/1853370294850618/ack-fluid:1.0.13
+      HelmChartUrl: oci://compute-nest-chart-registry.ap-southeast-1.cr.aliyuncs.com/5141674772595072/ack-fluid:1.0.13
       ChartValues:
         region:
           Ref: ALIYUN::Region
