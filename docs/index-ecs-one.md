@@ -4,7 +4,7 @@
 本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，10分钟即可部署使用QwQ-32B模型，15分钟即可部署使用Deepseek-R1-70B模型。
 本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受主流LLM（如Qwen、DeepSeek等）的推理体验。
 本服务提供的方案下，以平均每次请求的token为10kb计算，采用4张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数(QPS)约为13.1；采用8张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数约为24.1，Deepseek-R1-70B约为9.5。
-如希望支持模型动态扩缩与QPS自适应调度，可考虑[基于Ack/Acs的部署方案](https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-fcfc1ea4afaf47bcbadc/beta?isRecommend=true)。
+如希望支持模型动态扩缩与QPS自适应调度，可考虑[基于Ack/Acs的部署方案](https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-fcfc1ea4afaf47bcbadc/5?type=user&isRecommend=true)。
 
 
 ## 整体架构
