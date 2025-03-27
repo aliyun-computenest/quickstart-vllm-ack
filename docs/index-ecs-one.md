@@ -50,7 +50,7 @@
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
     ![result-ecs-one-2.png](result-ecs-one-2.png)
     ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
-
+    ![private-ip-ecs-one-2.png](private-ip-ecs-one-2.png)
 ### 公网API访问
 复制Api调用示例，在本地终端中粘贴Api调用示例即可。
     ![result-ecs-one-2.png](result-ecs-one-2.png)
