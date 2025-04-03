@@ -1,14 +1,12 @@
-# 基于单ECS实例的LLM模型部署文档
+# 基于双ECS实例的DeepSeek-R1满血版和DeepSeek-V3模型部署文档
 
 ## 部署说明
-本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，10分钟即可部署使用QwQ-32B模型，15分钟即可部署使用Deepseek-R1-70B模型。
-本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受主流LLM（如Qwen、DeepSeek等）的推理体验。
-本服务提供的方案下，以平均每次请求的token为10kb计算，采用4张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数(QPS)约为13.1；采用8张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数约为24.1，Deepseek-R1-70B约为9.5。
-如希望支持模型动态扩缩与QPS自适应调度，可考虑[基于Ack/Acs的部署方案](https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-fcfc1ea4afaf47bcbadc/5?isRecommend=true)。
+本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，30分钟内即可通过双Ecs实例部署使用DeepSeek-R1满血版和DeepSeek-V3模型。
+本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受DeepSeek-R1满血版和DeepSeek-V3的推理体验。
 
 
 ## 整体架构
-![arch-ecs-one.png](arch-ecs-one.png)
+![arch-ecs-two.png](arch-ecs-two.png)
 
 
 ## 计费说明
@@ -43,8 +41,6 @@
     ![deploying-ecs-one.png](deploying-ecs-one.png)
     ![result-ecs-one-1.png](result-ecs-one-1.png)
     ![result-ecs-one-2.png](result-ecs-one-2.png)
-4. ssh访问ECS实例后，执行 docker logs vllm 即可查询模型服务部署日志。当您看到下图所示结果时，表示模型服务部署成功。模型所在路径为/root/llm_model/。
-    ![deployed.png](deployed.png)
 
 ## 使用说明
 
@@ -57,26 +53,3 @@
 复制Api调用示例，在本地终端中粘贴Api调用示例即可。
     ![result-ecs-one-2.png](result-ecs-one-2.png)
     ![public-ip-ecs-one-1.png](public-ip-ecs-one-1.png)
-
-## 性能测试
-本服务方案下，针对QwQ-32B在4*A10和8*A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。
-
-### 8*A10规格
-#### QPS为10
-![img.png](qps10-8a10-ecs-one.png)
-
-#### QPS为20
-![qps20-8a10-ecs-one.png](qps20-8a10-ecs-one.png)
-
-#### QPS为50
-![qps50-8a10-ecs-one.png](qps50-8a10-ecs-one.png)
-
-### 4*A10规格
-#### QPS为10
-![qps10-4a10-ecs-one.png](qps10-4a10-ecs-one.png)
-
-#### QPS为20
-![qps20-4a10-ecs-one.png](qps20-4a10-ecs-one.png)
-
-#### QPS为50
-![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)
