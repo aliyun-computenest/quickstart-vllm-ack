@@ -1,0 +1,700 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Description:
+  en: 新建ACK部署Knative,并用vllm部署大模型
+  zh-cn: New ack deployment Knative and use vllm deploy llm.
+Conditions:
+  CreateVpcConditions:
+    Fn::Equals:
+      - NewVPC
+      - Ref: VpcOption
+  IsPublicEnabled:
+    Fn::Equals:
+      - Ref: SupportPublicAccess
+      - true
+Parameters:
+  Model:
+    Type: String
+    Label:
+      en: Model
+      zh-cn: 选择模型
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        QwQ-32b:
+          zh-cn: QwQ-32b
+          en: QwQ-32b
+        DeepSeek-R1_7b:
+          zh-cn: DeepSeek-R1:7b
+          en: DeepSeek-R1:7b
+        DeepSeek-R1_32b:
+          zh-cn: DeepSeek-R1:32b
+          en: DeepSeek-R1:32b
+        DeepSeek-R1_70b:
+          zh-cn: DeepSeek-R1:70b
+          en: DeepSeek-R1:70b
+        DeepSeek-R1_671b:
+          zh-cn: DeepSeek-R1:671b
+          en: DeepSeek-R1:671b
+    AllowedValues:
+      - QwQ-32b
+      - DeepSeek-R1_7b
+      - DeepSeek-R1_32b
+      - DeepSeek-R1_70b
+      - DeepSeek-R1_671b
+    Default: QwQ-32b
+  VpcOption:
+    Type: String
+    AllowedValues:
+      - NewVPC
+      - ExistingVPC
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        NewVPC:
+          zh-cn: 新建专有网络
+          en: New VPC
+        ExistingVPC:
+          zh-cn: 已有专有网络
+          en: Existing VPC
+    Label:
+      en: Select Existing or New VPC
+      zh-cn: 选择已有/新建的专有网络
+    Required: true
+    Default: NewVPC
+  ZoneId:
+    Type: String
+    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+    Label:
+      en: Zone ID
+      zh-cn: 可用区
+  VpcId:
+    Type: String
+    Label:
+      en: VPC ID
+      zh-cn: 专有网络VPC实例ID
+    AssociationProperty: 'ALIYUN::ECS::VPC::VPCId'
+    Required:
+      Fn::Equals:
+        - ExistingVPC
+        - ${VpcOption}
+    Default: ''
+    AssociationPropertyMetadata:
+      AutoSelectFirst: true
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  VSwitchId:
+    Type: String
+    Label:
+      en: VSwitch ID
+      zh-cn: 交换机实例ID
+    Default: ''
+    AssociationProperty: 'ALIYUN::ECS::VSwitch::VSwitchId'
+    Required:
+      Fn::Equals:
+        - ExistingVPC
+        - ${VpcOption}
+    AssociationPropertyMetadata:
+      AutoSelectFirst: true
+      VpcId: ${VpcId}
+      ZoneId: ${ZoneId}
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ExistingVPC
+            - ${VpcOption}
+  ServiceCidr:
+    Type: String
+    Description:
+      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Service CIDR
+      en: Service CIDR
+    AssociationProperty: ALIYUN::CS::AcsCluster::ServiceCidr
+    Default: 10.0.0.0/16
+  SupportPublicAccess:
+    Type: Boolean
+    Label:
+      zh-cn: 支持公网访问
+      en: Support Public Access
+Resources:
+  RandomApiKey:
+    Type: ALIYUN::RandomString
+    Properties:
+      length: 29
+      character_classes:
+        - class: lowercase
+          min: 1
+        - class: digits
+          min: 1
+  OSSRamUser:
+    DependsOn: OSSBucket
+    Type: ALIYUN::RAM::User
+    Properties:
+      UserName:
+        Ref: ALIYUN::StackName
+      Policies:
+        - PolicyName:
+            Ref: ALIYUN::StackName
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - oss:*
+                Effect: Allow
+                Resource:
+                  - Fn::Sub:
+                      - "acs:oss:*:*:${BucketName}"
+                      - BucketName:
+                          Fn::GetAtt:
+                            - OSSBucket
+                            - Name
+                  - Fn::Sub:
+                      - "acs:oss:*:*:${BucketName}/*"
+                      - BucketName:
+                          Fn::GetAtt:
+                            - OSSBucket
+                            - Name
+            Version: '1'
+  AccessKey:
+    DependsOn: OSSRamUser
+    Type: ALIYUN::RAM::AccessKey
+    Properties:
+      UserName:
+        Ref: ALIYUN::StackName
+  AcsCluster:
+    Type: ALIYUN::ACS::Cluster
+    Properties:
+      Name:
+        Ref: ALIYUN::StackName
+      EndpointPublicAccess:
+        Ref: SupportPublicAccess
+#      VpcId:
+#        Fn::If:
+#          - CreateVpcConditions
+#          - ""
+#          - Ref: VpcId
+#      VSwitchIds:
+#        - Fn::If:
+#          - CreateVpcConditions
+#          - ""
+#          - Ref: VSwitchId
+      ServiceCidr:
+        Ref: ServiceCidr
+      ClusterSpec: ack.pro.small
+      LoggingType: sls
+      SnatEntry: true
+      ZoneId:
+        Ref: ZoneId
+      PodVSwitchIds:
+        - Ref: VSwitchId
+      ServiceDiscoveryTypes:
+        - CoreDNS
+  ClusterAddons:
+    Type: ALIYUN::CS::ClusterAddons
+    Properties:
+      Addons:
+        - Name: ack-helm-manager
+        - Name: knative
+      InstalledIgnore: true
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+  AddonsSleep:
+    Type: ALIYUN::ROS::Sleep
+    DependsOn:
+      - ClusterAddons
+    Properties:
+      CreateDuration: 30
+  KourierModule:
+    Type: ALIYUN::CS::ClusterHelmApplication
+    DependsOn:
+      - AddonsSleep
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      ChartUrl: https://aliacs-app-catalog.oss-cn-hangzhou.aliyuncs.com/charts-incubator/ack-knative-kourier-1.4.0.tgz
+      ChartValues:
+        version: v1.14.2-aliyun.6
+        regionID:
+          Ref: ALIYUN::Region
+        registryURL:
+          Fn::Sub:
+            - registry-${Region}-vpc.ack.aliyuncs.com
+            - Region:
+                Ref: ALIYUN::Region
+      Namespace: knative-serving
+      Name: knative-kourier
+  KnativeSleep:
+    Type: ALIYUN::ROS::Sleep
+    DependsOn:
+      - KourierModule
+    Properties:
+      CreateDuration: 60
+  KourierInternalLBApplication:
+    Type: ALIYUN::CS::ClusterApplication
+    DependsOn:
+      - AcsCluster
+      - KnativeSleep
+      - AddonsSleep
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      YamlContent: |
+          apiVersion: v1
+          kind: Service
+          metadata:
+            annotations:
+              service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: intranet
+              service.beta.kubernetes.io/alibaba-cloud-loadbalancer-instance-charge-type: PayByCLCU
+              service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip-version: ipv4
+              service.beta.kubernetes.io/alibaba-cloud-loadbalancer-name: kourier-internal-lb
+            name: kourier-internal-lb
+            namespace: knative-serving
+          spec:
+            type: LoadBalancer
+            externalTrafficPolicy: Local
+            internalTrafficPolicy: Cluster
+            ipFamilies:
+              - IPv4
+            ipFamilyPolicy: SingleStack
+            allocateLoadBalancerNodePorts: true
+            ports:
+              - name: http2
+                port: 80
+                targetPort: 8081
+                protocol: TCP
+              - name: https
+                port: 443
+                targetPort: 8444
+                protocol: TCP
+            selector:
+              app: 3scale-kourier-gateway
+            sessionAffinity: None
+      WaitUntil:
+        - Kind: Service
+          ApiVersion: v1
+          Name: kourier-internal-lb
+          Namespace: knative-serving
+          JsonPath: $.status.loadBalancer.ingress[0].ip
+          Operator: NotEmpty
+          Value: ""
+          ValueType: String
+          FirstMatch: true
+          Timeout: 600
+  KourierPrivateIngressResources:
+    Type: DATASOURCE::CS::ClusterApplicationResources
+    DependsOn:
+      - KourierInternalLBApplication
+    Properties:
+      Namespace: knative-serving
+      Kind: Service
+      FirstMatch: True
+      ApiVersion: v1
+      JsonPath: $.status.loadBalancer.ingress[0].ip
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      Name: kourier-internal-lb
+  KourierPublicIngressResources:
+    Type: DATASOURCE::CS::ClusterApplicationResources
+    DependsOn:
+      - KnativeSleep
+    Condition: IsPublicEnabled
+    Properties:
+      Namespace: knative-serving
+      Kind: Service
+      FirstMatch: True
+      ApiVersion: v1
+      JsonPath: $.status.loadBalancer.ingress[0].ip
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      Name: kourier
+  OSSBucket:
+    Type: 'ALIYUN::OSS::Bucket'
+    Properties:
+      DeletionForce: true
+      BucketName:
+        Fn::Join:
+          - '-'
+          - - "knative-vllm"
+            - Ref: ALIYUN::StackId
+  VllmNamespace:
+    Type: ALIYUN::CS::ClusterApplication
+    DependsOn:
+      - AcsCluster
+    Properties:
+      RolePolicy: None
+      Stage: All
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      YamlContent: |
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: llm-model
+  VllmSecret:
+    Type: ALIYUN::CS::ClusterApplication
+    DependsOn:
+      - OSSRamUser
+      - VllmNamespace
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      YamlContent:
+        Fn::Sub:
+          - |
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: oss-secret
+              namespace: default
+            stringData:
+              akId: ${AccessKeyId}
+              akSecret: ${AccessKeySecret}
+          - AccessKeyId:
+              Fn::GetAtt:
+                - AccessKey
+                - AccessKeyId
+            AccessKeySecret:
+              Fn::GetAtt:
+                - AccessKey
+                - AccessKeySecret
+  VllmPV:
+    Type: ALIYUN::CS::ClusterApplication
+    DependsOn:
+      - OSSBucket
+      - VllmSecret
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      YamlContent:
+        Fn::Sub:
+          - |
+            apiVersion: storage.k8s.io/v1
+            kind: StorageClass
+            metadata:
+              name: llm-model
+            provisioner: ossplugin.csi.alibabacloud.com
+            parameters:
+              bucket: "${BucketName}"
+              url: "oss-${RegionId}-internal.aliyuncs.com"
+              path: "/llm-model"
+              otherOpts: "-o umask=022 -o max_stat_cache_size=0 -o allow_other"
+              csi.storage.k8s.io/node-publish-secret-name: oss-secret
+              csi.storage.k8s.io/node-publish-secret-namespace: default
+            reclaimPolicy: Retain
+            volumeBindingMode: Immediate
+            ---
+            apiVersion: v1
+            kind: PersistentVolumeClaim
+            metadata:
+              name: llm-model
+              namespace: llm-model
+            spec:
+              accessModes: [ "ReadWriteMany" ]
+              storageClassName: llm-model
+              resources:
+                requests:
+                  storage: 2048Gi
+          - RegionId:
+              Ref: ALIYUN::Region
+            BucketName:
+              Fn::GetAtt:
+                - OSSBucket
+                - Name
+  VllmApplication:
+    Type: ALIYUN::CS::ClusterApplication
+    DependsOn:
+      - VllmPV
+      - RandomApiKey
+    Properties:
+      YamlContent:
+        Fn::Sub:
+          - |
+            apiVersion: serving.knative.dev/v1
+            kind: Service
+            metadata:
+              labels:
+                release: llm-model
+                ${VisibilityLabel}
+              name: llm-model
+              namespace: llm-model
+            spec:
+              template:
+                metadata:
+                  annotations:
+                    autoscaling.knative.dev/min-scale: "1"
+                  labels:
+                    release: llm-model
+                spec:
+                  initContainers:
+                  - name: model-fetcher
+                    image: kube-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai/vllm:v0.7.2
+                    command:
+                      - bash
+                    args:
+                      - -c
+                      - |
+                        # 如果克隆的目录不在oss中，则下载
+                        if [ ! -d "/llm-model/${ModelName}/.git" ]; then
+                          echo "Download the ${ModelName} model."
+                          sudo yum install pigz -y
+                          if [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B" ]; then
+                            wget '{{ computenest::file::deepseek_r1_7b }}' -O deepseek-r1-1_5b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-7b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-7b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" ]; then
+                            wget '{{ computenest::file::deepseek_r1_32b }}' -O deepseek-r1-32b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-32b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-32b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B" ]; then
+                            wget '{{ computenest::file::deepseek_r1_70b }}' -O deepseek-r1-70b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-70b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-70b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "deepseek-ai/DeepSeek-R1" ]; then
+                            wget '{{ computenest::file::deepseek_r1_671b }}' -O deepseek-r1-671b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-671b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-671b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "Qwen/QwQ-32B" ]; then
+                            wget '{{ computenest::file::qwq_32b }}' -O qwq-32b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf qwq-32b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf qwq-32b.tar.gz
+                            exit 0
+                          else
+                            echo "The ${ModelName} model does not exist."
+                          fi
+                        else
+                          echo "Repository already cloned."
+                        fi
+                    
+                    volumeMounts:
+                    - name: llm-model
+                      mountPath: /llm-model
+                  containers:
+                  - name: vllm-container
+                    env:
+                    - name: VLLM_API_KEY
+                      value: ${VllmApiKey}
+                    command:
+                    - sh
+                    - -c
+                    - python3 -m vllm.entrypoints.openai.api_server --port 8080 --trust-remote-code
+                      --served-model-name ${ModelName} --model /llm-model/${ModelName} --gpu-memory-utilization
+                      ${GpuMemoryUtilization} --max-model-len ${MaxModelLen} --tensor-parallel-size ${GpuAmount}
+                      --enable-chunked-prefill --enforce-eager
+                    image: kube-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai/vllm:v0.7.2
+                    imagePullPolicy: IfNotPresent
+                    readinessProbe:
+                      tcpSocket:
+                        port: 8080
+                      initialDelaySeconds: 5
+                      periodSeconds: 5
+                    resources:
+                      requests:
+                        cpu: "8"
+                        memory: 16Gi
+                        nvidia.com/gpu: ${GpuAmount}
+                      limits:
+                        nvidia.com/gpu: ${GpuAmount}
+                    volumeMounts:
+                    - mountPath: /llm-model # 模型所在的路径
+                      name: llm-model
+                  volumes:
+                  - name: llm-model
+                    persistentVolumeClaim:
+                      claimName: llm-model
+          - ModelName:
+              Fn::FindInMap:
+                - ModelMapping
+                - ModelNameMap
+                - Ref: Model
+            MaxModelLen:
+              Fn::FindInMap:
+                - ModelMapping
+                - MaxModelLenMap
+                - Ref: Model
+            GpuMemoryUtilization:
+              Fn::FindInMap:
+                - ModelMapping
+                - GpuAmountMap
+                - Ref: Model
+            GpuAmount:
+              Fn::FindInMap:
+                - ModelMapping
+                - GpuMemoryUtilizationMap
+                - Ref: Model
+            VllmApiKey:
+              Fn::Join:
+                - '-'
+                - - 'cn'
+                  - Fn::GetAtt:
+                      - RandomApiKey
+                      - value
+            VisibilityLabel:
+              Fn::If:
+                - IsPublicEnabled
+                - ""
+                - "networking.knative.dev/visibility: cluster-local"
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      WaitUntil:
+        - Kind: Deployment
+          Name: llm-model-00001-deployment
+          Namespace: llm-model
+          JsonPath: $.status.readyReplicas
+          Operator: Equals
+          Value: '1'
+          ValueType: Json
+          FirstMatch: true
+          Timeout: 10800
+Outputs:
+  PrivateAPIUserInstructions:
+    Label: 私网Api调用使用说明
+    Description: 私网Api调用使用说明，通过以下命令发送HTTP请求访问推理服务，修改prompt的内容，即可自定义和推理服务交互的内容
+    Value:
+      Fn::Sub:
+        - 'curl -X POST "http://${PrivateIp}/v1/chat/completions" -H "Host: llm-model.llm-model.svc.cluster.local" -H "Content-Type: application/json" -H "Authorization: Bearer 替换为模型服务的API-Key" --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - PrivateIp:
+            Fn::GetAtt:
+              - KourierPrivateIngressResources
+              - Response
+          ModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelNameMap
+              - Ref: Model
+  PublicAPIUserInstructions:
+    Condition: IsPublicEnabled
+    Label: 公网API调用示例
+    Description: 通过公网IP调用服务（部署时建议严格限制源IP）
+    Value:
+      Fn::Sub:
+        - 'curl -X POST "http://${PublicIP}/v1/chat/completions" -H "Host: llm-model.llm-model.example.com" -H "Content-Type: application/json" -H "Authorization: Bearer 替换为模型服务的API-Key" --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - PublicIP:
+            Fn::GetAtt:
+              - KourierPublicIngressResources
+              - Response
+          ModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelNameMap
+              - Ref: Model
+  API_KEY:
+    NoEcho: true
+    Label: 模型服务的API Key
+    Value:
+      Fn::Join:
+        - '-'
+        - - 'cn'
+          - Fn::GetAtt:
+              - RandomApiKey
+              - value
+Mappings:
+  ModelMapping:
+    ModelNameMap:
+      'QwQ-32b': 'Qwen/QwQ-32B'
+      'DeepSeek-R1_7b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B'
+      'DeepSeek-R1_32b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B'
+      'DeepSeek-R1_70b': 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B'
+      'DeepSeek-R1_671b': 'deepseek-ai/DeepSeek-R1'
+    MaxModelLenMap:
+      'QwQ-32b': 4096
+      'DeepSeek-R1_7b': 4096
+      'DeepSeek-R1_32b': 4096
+      'DeepSeek-R1_70b': 4096
+      'DeepSeek-R1_671b': 4096
+    GpuMemoryUtilizationMap:
+      'QwQ-32b': 0.92
+      'DeepSeek-R1_7b': 0.9
+      'DeepSeek-R1_32b': 0.95
+      'DeepSeek-R1_70b': 0.95
+      'DeepSeek-R1_671b': 0.97
+    GpuAmountMap:
+      'QwQ-32b': 2
+      'DeepSeek-R1_7b': 1
+      'DeepSeek-R1_32b': 2
+      'DeepSeek-R1_70b': 4
+      'DeepSeek-R1_671b': 8
+Metadata:
+  ALIYUN::ROS::Interface:
+    ParameterGroups:
+      - Parameters:
+          - Model
+        Label:
+          en: Select model
+          zh-cn: 模型选择
+      - Parameters:
+          - ZoneId
+          - ServiceCidr
+          - VpcOption
+          - VpcId
+          - VSwitchId
+        Label:
+          en: ACS profile
+          zh-cn: ACS配置
+      - Parameters:
+          - SupportPublicAccess
+        Label:
+          en: 访问配置
+          zh-cn: 访问配置
+Rules:
+  HangzhouRule:
+    RuleCondition:
+      Fn::Equals:
+        - Ref: ALIYUN::Region
+        - cn-hangzhou
+    Assertions:
+      - Assert:
+          Fn::Equals:
+            - Ref: ZoneId
+            - cn-hangzhou-b
+  ShanghaiRule:
+    RuleCondition:
+      Fn::Equals:
+        - Ref: ALIYUN::Region
+        - cn-shanghai
+    Assertions:
+      - Assert:
+          Fn::Equals:
+            - Ref: ZoneId
+            - cn-shanghai-e
+  BeijingRule:
+    RuleCondition:
+      Fn::Equals:
+        - Ref: ALIYUN::Region
+        - cn-beijing
+    Assertions:
+      - Assert:
+          Fn::Or:
+          - Fn::Equals:
+              - Ref: ZoneId
+              - cn-beijing-l
+          - Fn::Equals:
+              - Ref: ZoneId
+              - cn-beijing-d

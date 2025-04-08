@@ -1,0 +1,1577 @@
+ROSTemplateFormatVersion: '2015-09-01'
+Description:
+  en: Create ACK Cluster And JumpBox Ecs, Deploy with kubectl -f yaml with new vpc
+  zh-cn: 创建ack集群和跳板机并使用kubectl部署(新建vpc)
+Conditions:
+  IfQwQ-32b:
+    Fn::Equals:
+      - Ref: Model
+      - 'QwQ-32b'
+  IfDeepseek-R1:
+    Fn::Equals:
+      - Ref: Model
+      - 'DeepSeek-R1_671b_H20'
+  IfDeepseek-R1-PPU:
+    Fn::Equals:
+      - Ref: Model
+      - 'DeepSeek-R1_671b_PPU'
+  CreateAcsCondition:
+    Fn::Equals:
+      - Ref: CreateAcs
+      - true
+  IsPublicEnabled:
+    Fn::Equals:
+      - Ref: SupportPublicAccess
+      - true
+Parameters:
+  CreateAcs:
+    Type: Boolean
+    Description:
+      en: An existing ack cluster can be deployed by entering the cluster id. If there is no current cluster, create a new ack cluster before deploying
+      zh-cn: 已有ack集群输入集群id即可部署，当前无集群先新建ack集群再进行部署
+    Label:
+      en: Wether create ack cluster
+      zh-cn: 是否新建ack集群
+    Default: true
+  ClusterId:
+    Type: String
+    Description:
+      en: The ID of Kubernetes ClusterId in which application deployed.
+      zh-cn: 部署应用程序的K8s集群ID
+    AllowedPattern: '[0-9a-z]+$'
+    Default: null
+    Required: true
+    Label:
+      en: Kubernetes ClusterId
+      zh-cn: K8s集群ID
+    AssociationProperty: 'ALIYUN::CS::Cluster::ClusterId'
+    AssociationPropertyMetadata:
+      RegionId: '${RegionId}'
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${CreateAcs}
+            - false
+  Model:
+    Type: String
+    Label:
+      en: Model
+      zh-cn: 选择模型
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        QwQ-32b:
+          zh-cn: QwQ-32b
+          en: QwQ-32b
+        DeepSeek-R1_671b_H20:
+          zh-cn: DeepSeek-R1:671b-H20
+          en: DeepSeek-R1:671b-H20
+        DeepSeek-R1_671b_PPU:
+          zh-cn: DeepSeek-R1:671b-PPU
+          en: DeepSeek-R1:671b-PPU
+    AllowedValues:
+      - QwQ-32b
+      - DeepSeek-R1_671b_H20
+      - DeepSeek-R1_671b_PPU
+    Default: QwQ-32b
+  ServiceCidr:
+    Type: String
+    Description:
+      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+    Label:
+      zh-cn: Service CIDR
+      en: Service CIDR
+    AssociationProperty: ALIYUN::CS::AcsCluster::ServiceCidr
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Equals:
+            - ${CreateAcs}
+            - true
+    Default: 10.0.0.0/16
+  SupportPublicAccess:
+    Type: Boolean
+    Label:
+      zh-cn: 支持公网访问
+      en: Support Public Access
+  PayType:
+    Type: String
+    Label:
+      en: ECS Instance Charge Type
+      zh-cn: 付费类型
+    Default: PostPaid
+    AllowedValues:
+      - PostPaid
+      - PrePaid
+    AssociationProperty: ChargeType
+    AssociationPropertyMetadata:
+      LocaleKey: InstanceChargeType
+  PayPeriodUnit:
+    Type: String
+    Label:
+      en: Pay Period Unit
+      zh-cn: 购买资源时长周期
+    Default: Month
+    AllowedValues:
+      - Month
+      - Year
+    AssociationProperty: PayPeriodUnit
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Not:
+            Fn::Equals:
+              - ${PayType}
+              - PostPaid
+  PayPeriod:
+    Type: Number
+    Description: Null
+    Label:
+      en: Period
+      zh-cn: 购买资源时长
+    Default: 1
+    AllowedValues:
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+      - 8
+      - 9
+    AssociationProperty: PayPeriod
+    AssociationPropertyMetadata:
+      Visible:
+        Condition:
+          Fn::Or:
+            - Fn::Equals:
+                - ${PayType}
+                - PrePaid
+            - Fn::Equals:
+                - ${PayType}
+                - undefined
+  EcsInstanceType:
+    Type: String
+    Label:
+      en: Instance Type
+      zh-cn: 实例类型
+    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+  ZoneId1:
+    Type: String
+    Description:
+      zh-cn: 可用区1
+      en: ZoneId
+    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+    AssociationPropertyMetadata:
+      InstanceType: ${EcsInstanceType}
+      ExclusiveTo:
+        - ZoneId2
+    Label:
+      en: Zone ID
+      zh-cn: 可用区1
+  ZoneId2:
+    Type: String
+    Description:
+      zh-cn: 可用区2
+      en: ZoneId
+    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+    AssociationPropertyMetadata:
+      InstanceType: ${EcsInstanceType}
+      ExclusiveTo:
+        - ZoneId1
+    Label:
+      en: Zone ID
+      zh-cn: 可用区2
+  LoginPassword:
+    NoEcho: true
+    Type: String
+    Default: asdf123-
+    Description:
+      en: 'Length 8-32 characters, can contain size letters, Numbers and special symbols, including:! @ # $ % ^ & * ( ) _ + - ='
+      zh-cn: 长度8-32个字符,可包含大小字母、数字及特殊符号（包含：!@#$%^&*()_+-=）
+    Label:
+      en: Instance Password
+      zh-cn: 实例密码
+    ConstraintDescription:
+      en: '8-32 characters, can contain size letters, Numbers and special symbols, including:! @ # $ % ^ & * ( ) _ + - ='
+      zh-cn: 8-32个字符,可包含大小字母、数字及特殊符号（包含：!@#$%^&*()_+-=）
+    MinLength: 8
+    MaxLength: 32
+Resources:
+  EcsVpc:
+    Type: ALIYUN::ECS::VPC
+    Properties:
+      CidrBlock: 192.168.0.0/16
+  EcsVSwitch1:
+    Type: ALIYUN::ECS::VSwitch
+    DependsOn: EcsVpc
+    Properties:
+      VpcId:
+        Ref: EcsVpc
+      CidrBlock: 192.168.0.0/24
+      ZoneId:
+        Ref: ZoneId1
+  EcsVSwitch2:
+    Type: ALIYUN::ECS::VSwitch
+    DependsOn: EcsVpc
+    Properties:
+      VpcId:
+        Ref: EcsVpc
+      CidrBlock: 192.168.1.0/24
+      ZoneId:
+        Ref: ZoneId2
+  EcsSecurityGroup:
+    Type: ALIYUN::ECS::SecurityGroup
+    Properties:
+      VpcId:
+        Ref: EcsVpc
+      SecurityGroupIngress:
+        - PortRange: '22/22'
+          Priority: 1
+          SourceCidrIp: 0.0.0.0/0
+          IpProtocol: tcp
+          NicType: intranet
+      SecurityGroupEgress:
+        - PortRange: '-1/-1'
+          Priority: 1
+          IpProtocol: all
+          DestCidrIp: 0.0.0.0/0
+          NicType: intranet
+  OSSBucket:
+    Type: 'ALIYUN::OSS::Bucket'
+    Properties:
+      DeletionForce: true
+      BucketName:
+        Fn::Join:
+          - '-'
+          - - "knative-vllm"
+            - Ref: ALIYUN::StackId
+  OSSRamUser:
+    DependsOn: OSSBucket
+    Type: ALIYUN::RAM::User
+    Properties:
+      UserName:
+        Ref: ALIYUN::StackName
+      Policies:
+        - PolicyName:
+            Ref: ALIYUN::StackName
+          PolicyDocument:
+            Statement:
+              - Action:
+                  - oss:*
+                Effect: Allow
+                Resource:
+                  - Fn::Sub:
+                      - "acs:oss:*:*:${BucketName}"
+                      - BucketName:
+                          Fn::GetAtt:
+                            - OSSBucket
+                            - Name
+                  - Fn::Sub:
+                      - "acs:oss:*:*:${BucketName}/*"
+                      - BucketName:
+                          Fn::GetAtt:
+                            - OSSBucket
+                            - Name
+            Version: '1'
+  AccessKey:
+    DependsOn: OSSRamUser
+    Type: ALIYUN::RAM::AccessKey
+    Properties:
+      UserName:
+        Ref: ALIYUN::StackName
+  AcsCluster:
+    Type: ALIYUN::ACS::Cluster
+    Properties:
+      Name:
+        Ref: ALIYUN::StackName
+      EndpointPublicAccess: false
+      ServiceCidr:
+        Ref: ServiceCidr
+      ClusterSpec: ack.pro.small
+      LoggingType: sls
+      SnatEntry: true
+      VSwitchIds:
+        - Ref: EcsVSwitch1
+        - Ref: EcsVSwitch2
+      VpcId:
+        Ref: EcsVpc
+      ZoneIds:
+        - Ref: ZoneId1
+        - Ref: ZoneId2
+      PodVSwitchIds:
+        - Ref: EcsVSwitch1
+        - Ref: EcsVSwitch2
+      ServiceDiscoveryTypes:
+        - CoreDNS
+  EcsInstanceJumpBox:
+    Type: ALIYUN::ECS::InstanceGroup
+    Properties:
+      InstanceName:
+        Fn::Join:
+          - '-'
+          - - Ref: ALIYUN::StackName
+            - jumpbox
+      ImageId:
+        Fn::FindInMap:
+          - ModelMapping
+          - ModelImageIdMap
+          - Ref: Model
+      InstanceType:
+        Ref: EcsInstanceType
+      ZoneId:
+        Ref: ZoneId1
+      VpcId:
+        Ref: EcsVpc
+      VSwitchId:
+        Ref: EcsVSwitch1
+      SecurityGroupId:
+        Ref: EcsSecurityGroup
+      AllocatePublicIP: false
+      Password:
+        Ref: LoginPassword
+      MaxAmount: 1
+      InstanceChargeType:
+        Ref: PayType
+      PeriodUnit:
+        Ref: PayPeriodUnit
+      Period:
+        Ref: PayPeriod
+      SystemDiskSize:
+        Fn::FindInMap:
+          - ModelMapping
+          - ModelDiskSizeMap
+          - Ref: Model
+      SystemDiskCategory: cloud_essd
+  RunPreDeployCommand:
+    Type: ALIYUN::ECS::RunCommand
+    DependsOn:
+      - RunOSSCommand
+      - EcsInstanceJumpBox
+      - AcsCluster
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            
+            # 创建namespace、secret、pv、pvc
+            echo '${ApplicationYaml}' > ~/application.yaml
+            kubectl --kubeconfig ~/.kube/config apply -f ~/application.yaml --validate=false
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            ApplicationYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: v1
+                  kind: Namespace
+                  metadata:
+                    name: llm-model
+                  ---
+                  apiVersion: v1
+                  kind: Secret
+                  metadata:
+                    name: oss-secret
+                    namespace: llm-model
+                  stringData:
+                    akId: ${AccessKeyId}
+                    akSecret: ${AccessKeySecret}
+                  ---
+                  apiVersion: storage.k8s.io/v1
+                  kind: StorageClass
+                  metadata:
+                    name: llm-model
+                  provisioner: ossplugin.csi.alibabacloud.com
+                  parameters:
+                    bucket: "${BucketName}"
+                    url: "oss-${RegionId}-internal.aliyuncs.com"
+                    path: "/llm-model"
+                    otherOpts: "-o umask=022 -o max_stat_cache_size=0 -o allow_other"
+                    csi.storage.k8s.io/node-publish-secret-name: oss-secret
+                    csi.storage.k8s.io/node-publish-secret-namespace: llm-model
+                  reclaimPolicy: Retain
+                  volumeBindingMode: Immediate
+                  ---
+                  apiVersion: v1
+                  kind: PersistentVolumeClaim
+                  metadata:
+                    name: llm-model
+                    namespace: llm-model
+                  spec:
+                    accessModes: [ "ReadWriteMany" ]
+                    storageClassName: llm-model
+                    resources:
+                      requests:
+                        storage: 2048Gi
+                - AccessKeyId:
+                    Fn::GetAtt:
+                      - AccessKey
+                      - AccessKeyId
+                  AccessKeySecret:
+                    Fn::GetAtt:
+                      - AccessKey
+                      - AccessKeySecret
+                  RegionId:
+                    Ref: ALIYUN::Region
+                  BucketName:
+                    Fn::GetAtt:
+                      - OSSBucket
+                      - Name
+  ClusterUserKubeconfig:
+    Type: DATASOURCE::CS::ClusterUserKubeconfig
+    Properties:
+      ClusterId:
+        Ref: ClusterId
+      PrivateIpAddress: true
+  RandomApiKey:
+    Type: ALIYUN::RandomString
+    Properties:
+      length: 29
+      character_classes:
+        - class: lowercase
+          min: 1
+        - class: digits
+          min: 1
+  RunOSSCommand:
+    Type: ALIYUN::ECS::RunCommand
+    Condition: CreateAcsCondition
+    DependsOn:
+      - EcsInstanceJumpBox
+      - OSSBucket
+    Properties:
+      Type: RunShellScript
+      Sync: true
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '10800'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            sudo -v ; yum install unzip -y; curl https://gosspublic.alicdn.com/ossutil/install.sh | sudo bash
+            cat >> /usr/bin/oss.cfg <<EOF
+            [Credentials]
+            endpoint = oss-${RegionId}-internal.aliyuncs.com
+            accessKeyID = ${AccessKeyId}
+            accessKeySecret = ${AccessKeySecret}
+            region = ${RegionId}
+            EOF
+
+            sysctl -w net.ipv4.tcp_window_scaling=1
+            sysctl -w net.core.rmem_max=16777216
+            sysctl -w net.core.wmem_max=16777216
+
+            ossutil --config-file /usr/bin/oss.cfg cp -r /root/llm-model/${ModelName} oss://${BucketName}/llm-model/${ModelName}
+          - AccessKeyId:
+              Fn::GetAtt:
+                - AccessKey
+                - AccessKeyId
+            AccessKeySecret:
+              Fn::GetAtt:
+                - AccessKey
+                - AccessKeySecret
+            RegionId:
+              Ref: ALIYUN::Region
+            BucketName:
+              Fn::GetAtt:
+                - OSSBucket
+                - Name
+            ModelName:
+              Fn::FindInMap:
+                - ModelMapping
+                - ModelNameMap
+                - Ref: Model
+  RunInstallHelmCommand:
+    Type: ALIYUN::ECS::RunCommand
+    Condition: IfDeepseek-R1
+    DependsOn:
+      - EcsInstanceJumpBox
+      - AcsCluster
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            
+            wget {{ computenest::file::helm }} -O helm.tar.gz
+            tar -zxvf helm.tar.gz
+            chmod +x linux-amd64/helm
+            cp linux-amd64/helm /usr/bin/
+            rm -rf helm.tar.gz linux-amd64/
+            
+            echo '${FluidValuesYaml}' >> fluid-values.yaml
+            curl -LO https://aliacs-app-catalog.oss-cn-hangzhou.aliyuncs.com/charts-incubator/ack-fluid-1.0.13.tgz
+            helm install ack-fluid ack-fluid-1.0.13.tgz -n=fluid-system --create-namespace -f fluid-values.yaml
+            
+            echo '${LwsValuesYaml}' >> lws-values.yaml
+            curl -LO https://aliacs-app-catalog.oss-cn-hangzhou.aliyuncs.com/charts-incubator/lws-0.1.0.tgz
+            helm install lws lws-0.1.0.tgz -n=lws-system --create-namespace -f lws-values.yaml
+            sleep 10
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            LwsValuesYaml:
+              Fn::Sub:
+                - |
+                  nameOverride: ""
+                  fullnameOverride: ""
+                  
+                  enablePrometheus: false
+                  enableCertManager: false
+                  
+                  replicaCount: 1
+                  imagePullSecrets: []
+                  
+                  image:
+                    manager:
+                      repository: registry-${Region}-vpc.ack.aliyuncs.com/acs/lws
+                      tag: v0.5.0
+                      pullPolicy: IfNotPresent
+                  
+                  podAnnotations: {}
+                  
+                  podSecurityContext:
+                    runAsNonRoot: true
+                  
+                  securityContext:
+                    allowPrivilegeEscalation: false
+                    capabilities:
+                      drop:
+                      - ALL
+                  
+                  service:
+                    type: ClusterIP
+                    port: 9443
+                  
+                  resources:
+                    requests:
+                      cpu: 1
+                      memory: 1Gi
+                - Region:
+                    Ref: ALIYUN::Region
+            FluidValuesYaml:
+              Fn::Sub:
+                - |
+                  region: ${Region}
+                  
+                  cluster_profile: ManagedKubernetes 
+                  clusterProfileforApp: Acs 
+                  pullImageByVPCNetwork: true
+                  appendImageTag: true
+                  workdir: /tmp
+                  helmDriver: configmap
+                  
+                  image:
+                    imagePullSecrets: []
+                  imagePrefix: &defaultImagePrefix acs
+                  version: &defaultVersion v1.0.13-fc3296a6
+                  
+                  crdUpgrade:
+                    enabled: true
+                    ttlSecondsAfterFinished: 259200
+                    imagePrefix: *defaultImagePrefix
+                    imageName: fluid-crd-upgrader
+                    imageTag: *defaultVersion
+                  
+                  namespace: fluid-system
+                  
+                  dataset:
+                    replicas: 1
+                    tolerations:
+                      - operator: Exists
+                    resources: ~
+                    controller:
+                      imagePrefix: *defaultImagePrefix
+                      imageName: dataset-controller
+                      imageTag: *defaultVersion
+                  
+                  csi:
+                    tolerations:
+                      - operator: Exists
+                    featureGates: "FuseRecovery=false"
+                    config:
+                      hostNetwork: false
+                    registrar:
+                      imagePrefix: acs
+                      imageName: csi-node-driver-registrar
+                      imageTag: v2.3.0-038aeb6-aliyun
+                  
+                    plugins:
+                      imagePrefix: *defaultImagePrefix
+                      imageName: fluid-csi
+                      imageTag: *defaultVersion
+                    kubelet:
+                      kubeConfigFile: /etc/kubernetes/kubelet.conf
+                      certDir: /var/lib/kubelet/pki
+                      rootDir: /var/lib/kubelet
+                    pruneFs: fuse.alluxio-fuse,fuse.jindofs-fuse,fuse.juicefs,fuse.goosefs-fuse,ossfs,alifuse.aliyun-alinas-efc
+                    recoverWarningThreshold: 50
+                    nodePublishMethod: bindMount
+                    hostPID: false
+                  
+                  runtime:
+                    criticalFusePod: true
+                    syncRetryDuration: 15s
+                    mountRoot: /runtime-mnt
+                    alluxio:
+                      replicas: 1
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      runtimeWorkers: 10
+                      portRange: 20000-26000
+                      portAllocatePolicy: random
+                      enabled: false
+                      init:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: init-users
+                        imageTag: v1.0.0
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: alluxioruntime-controller
+                        imageTag: *defaultVersion
+                      runtime:
+                        imagePrefix: acs
+                        imageName: alluxio-dev
+                        imageTag: 2.9.0
+                      fuse:
+                        imagePrefix: acs 
+                        imageName: alluxio-dev
+                        imageTag: 2.9.0
+                      mountConfigStorage: configmap
+                    jindo:
+                      replicas: 1
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      runtimeWorkers: 10
+                      portRange: 18000-19999
+                      portAllocatePolicy: random
+                      enabled: false
+                      engine: jindocache
+                      queryUfsTotal: true
+                      smartdata:
+                        imagePrefix: jindofs
+                        imageName: smartdata
+                        imageTag: 6.2.0
+                      fuse:
+                        imagePrefix: jindofs
+                        imageName: jindo-fuse
+                        imageTag: 6.2.0
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: jindoruntime-controller
+                        imageTag: *defaultVersion
+                      init:
+                        portCheck:
+                          enabled: false
+                        imagePrefix: *defaultImagePrefix
+                        imageName: init-users
+                        imageTag: v1.0.0
+                    juicefs:
+                      replicas: 1
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      enabled: false
+                      runtimeWorkers: 10
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: juicefsruntime-controller
+                        imageTag: *defaultVersion
+                      fuse:
+                        ceimagePrefix: juicedata
+                        ceimageName: mount
+                        ceimageTag: ce-v1.2.0
+                        eeimagePrefix: juicedata
+                        eeimageName: mount
+                        eeimageTag: ee-5.0.21-317356c
+                    thin:
+                      replicas: 1
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      enabled: false
+                      runtimeWorkers: 10
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: thinruntime-controller
+                        imageTag: *defaultVersion
+                      fuse:
+                        configStorage: configmap
+                    efc:
+                      replicas: 1
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      enabled: false
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: efcruntime-controller
+                        imageTag: *defaultVersion
+                        imagePullPolicy: Always
+                      init:
+                        imagePrefix: nascache
+                        imageName: init-alifuse
+                        imageTag: v1.2.2-19dcee9
+                      master:
+                        imagePrefix: nascache
+                        imageName: efc-master
+                        imageTag: v1.2.2-19dcee9
+                      worker:
+                        imagePrefix: nascache
+                        imageName: efc-worker
+                        imageTag: v1.2.2-19dcee9
+                      fuse:
+                        imagePrefix: nascache
+                        imageName: efc-fuse
+                        imageTag: v1.2.2-19dcee9
+                    vineyard:
+                      replicas: 1
+                      portRange: 32000-34000
+                      tolerations:
+                        - operator: Exists
+                      resources: ~
+                      enabled: false
+                      controller:
+                        imagePrefix: *defaultImagePrefix
+                        imageName: vineyardruntime-controller
+                        imageTag: *defaultVersion
+                        imagePullPolicy: Always
+                      master:
+                        imagePrefix: vineyard
+                        imageName: vineyardd
+                        imageTag: v0.22.2
+                      worker:
+                        imagePrefix: vineyard
+                        imageName: vineyardd
+                        imageTag: v0.22.2
+                      fuse:
+                        imagePrefix: vineyard
+                        imageName: vineyard-fluid-fuse
+                        imageTag: v0.22.2
+                  
+                  webhook:
+                    enabled: true
+                    imagePrefix: *defaultImagePrefix
+                    imageName: fluid-webhook
+                    imageTag: *defaultVersion
+                    replicas: 1
+                    serverlessInject:
+                      platformKey: alibabacloud.com/fluid-sidecar-target
+                      platformValue: eci
+                      vfuseResourceName: alibabacloud.com/vfuse
+                    timeoutSeconds: 15
+                    reinvocationPolicy: IfNeeded
+                    tolerations:
+                      - operator: Exists
+                    resources: ~
+                    forceReplacePluginsProfile: false
+                    pluginsProfile:
+                      plugins:
+                        serverful:
+                          withDataset:
+                            - RequireNodeWithFuse
+                            - NodeAffinityWithCache
+                            - MountPropagationInjector
+                            - DatasetUsageInjector
+                          withoutDataset:
+                            - PreferNodesWithoutCache
+                        serverless:
+                          withDataset:
+                            - FuseSidecar
+                            - DatasetUsageInjector
+                          withoutDataset: []
+                      pluginConfig:
+                        - name: NodeAffinityWithCache
+                          # plugin args is a serialized yaml string.
+                          args: |
+                            preferred:
+                              - name: fluid.io/node
+                                weight: 100
+                              - name: topology.kubernetes.io/zone
+                                weight: 50
+                              - name: topology.kubernetes.io/region
+                                weight: 20
+                            required:
+                              - fluid.io/node
+                  fluidapp:
+                    enabled: true
+                    replicas: 1
+                    tolerations:
+                      - operator: Exists
+                    resources: ~
+                    controller:
+                      imagePrefix: *defaultImagePrefix
+                      imageName: application-controller
+                      imageTag: *defaultVersion
+                    featureGates: "DataflowAffinity=false"
+                - Region:
+                    Ref: ALIYUN::Region
+  FluidModule:
+    Type: MODULE::ACS::ComputeNest::FluxOciHelmDeploy
+    Version: v1
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      HelmChartUrl: oci://compute-nest-chart-registry.cn-hangzhou.cr.aliyuncs.com/1563457855438522/ack-fluid:1.0.13
+      ChartValues:
+        region:
+          Ref: ALIYUN::Region
+        version: 1.0.13-fc3296a6
+        cluster_profile: ManagedKubernetes
+        clusterProfileforApp: Default
+        appendImageTag: true
+      Namespace: fluid-system
+      ReleaseName: ack-fluid
+  LwsModule:
+    Type: MODULE::ACS::ComputeNest::FluxOciHelmDeploy
+    Version: v1
+    Properties:
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      HelmChartUrl: oci://compute-nest-chart-registry.cn-hangzhou.cr.aliyuncs.com/computenest-test/lws:0.1.0
+      ChartValues:
+        image:
+          manager:
+            repository:
+              Fn::Sub:
+                - registry-${Region}-vpc.ack.aliyuncs.com/acs/lws
+                - Region:
+                    Ref: ALIYUN::Region
+        dockerConfigJson: '{{ computenest::acr::dockerconfigjson }}'
+      Namespace: lws-system
+      ReleaseName: lws
+  RunQwQCommand:
+    Type: ALIYUN::ECS::RunCommand
+    Condition: IfQwQ-32b
+    DependsOn:
+      - RunOSSCommand
+      - EcsInstanceJumpBox
+      - AcsCluster
+      - RandomApiKey
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            
+            echo '${ApplicationYaml}' > ~/application.yaml
+            kubectl --kubeconfig ~/.kube/config apply -f ~/application.yaml --validate=false
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            ApplicationYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  metadata:
+                    labels:
+                      app: qwq-32b
+                      alibabacloud.com/compute-class: gpu
+                      alibabacloud.com/gpu-model-series: H20
+                      alibabacloud.com/hpn-type: "rdma"
+                    name: qwq-32b
+                    namespace: llm-model
+                  spec:
+                    replicas: 1
+                    selector:
+                      matchLabels:
+                        app: qwq-32b
+                    template:
+                      metadata:
+                        labels:
+                          app: qwq-32b
+                          alibabacloud.com/compute-class: gpu
+                          alibabacloud.com/gpu-model-series: H20
+                      spec:
+                        volumes:
+                          - name: llm-model
+                            persistentVolumeClaim:
+                              claimName: llm-model
+                          - name: dshm
+                            emptyDir:
+                              medium: Memory
+                              sizeLimit: 50Gi
+                        containers:
+                        - command:
+                          - sh
+                          - -c
+                          - vllm serve /llm-model/Qwen/QwQ-32B --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 32768 --gpu-memory-utilization 0.95 --enforce-eager
+                          image: egslingjun-registry.cn-wulanchabu.cr.aliyuncs.com/egslingjun/inference-nv-pytorch:25.02-vllm0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250305-serverless
+                          name: vllm
+                          env:
+                          - name: VLLM_API_KEY
+                            value: ${VllmApiKey}
+                          ports:
+                          - containerPort: 8000
+                          readinessProbe:
+                            tcpSocket:
+                              port: 8000
+                            initialDelaySeconds: 30
+                            periodSeconds: 30
+                          resources:
+                            limits:
+                              nvidia.com/gpu: "1"
+                              cpu: "16"
+                              memory: 128Gi
+                          volumeMounts:
+                            - mountPath: /llm-model
+                              name: llm-model
+                            - mountPath: /dev/shm
+                              name: dshm
+                  ---
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    name: qwq-32b
+                    namespace: llm-model
+                  spec:
+                    type: ClusterIP
+                    selector:
+                      app: qwq-32b
+                    ports:
+                      - protocol: TCP
+                        port: 8000
+                        targetPort: 8000
+                - ServedModelName:
+                    Fn::FindInMap:
+                      - ModelMapping
+                      - ServedModelNameMap
+                      - Ref: Model
+                  VllmApiKey:
+                    Fn::Join:
+                      - '-'
+                      - - 'cn'
+                        - Fn::GetAtt:
+                            - RandomApiKey
+                            - value
+  RunDeepseekH20Command:
+    Type: ALIYUN::ECS::RunCommand
+    Condition: IfDeepseek-R1
+    DependsOn:
+      - RunOSSCommand
+      - EcsInstanceJumpBox
+      - AcsCluster
+      - RunInstallHelmCommand
+      - FluidModule
+      - LwsModule
+      - RandomApiKey
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            echo '${ApplicationYaml}' > ~/application.yaml
+            kubectl --kubeconfig ~/.kube/config apply -f ~/application.yaml --validate=false
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            ApplicationYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: leaderworkerset.x-k8s.io/v1
+                  kind: LeaderWorkerSet
+                  metadata:
+                    name: deepseek-r1
+                    namespace: llm-model
+                  spec:
+                    replicas: 1
+                    leaderWorkerTemplate:
+                      size: 2 #leader和worker的总数量
+                      restartPolicy: RecreateGroupOnPodRestart
+                      leaderTemplate:
+                        metadata:
+                          labels: 
+                            role: leader
+                            alibabacloud.com/compute-class: gpu  #指定GPU类型 
+                            alibabacloud.com/compute-qos: default #指定acs qos等级
+                            alibabacloud.com/gpu-model-series: H20 ##指定GPU型号
+                            # 指定让应用运行在高性能网络RDMA中，支持RDMA的GPU型号请提交工单咨询
+                            alibabacloud.com/hpn-type: "rdma"
+                        spec:
+                          volumes:
+                            - name: llm-model
+                              persistentVolumeClaim:
+                                ## 如果使用fluid，此处应填写 fluid dataset 名字，比如：deepseek
+                                claimName: llm-model
+                            - name: shm
+                              emptyDir:
+                                medium: Memory
+                                sizeLimit: 32Gi
+                          containers:
+                            - name: deepseek-r1-671b-leader
+                              image: registry-cn-hangzhou.ack.aliyuncs.com/ack-demo/vllm:v0.7.2
+                              env:
+                                - name: NCCL_SOCKET_IFNAME #指定网卡
+                                  value: eth0
+                                - name: NCCL_IB_TC
+                                  value: "136"
+                                - name: NCCL_IB_SL
+                                  value: "5"
+                                - name: NCCL_IB_GID_INDEX
+                                  value: "3"
+                                - name: NCCL_DEBUG
+                                  value: "INFO"
+                                - name: NCCL_IB_HCA
+                                  value: "mlx5"
+                                - name: NCCL_NET_PLUGIN
+                                  value: "none"
+                                - name: VLLM_API_KEY
+                                  value: ${VllmApiKey}
+                              command:
+                                - sh
+                                - -c
+                                - "/vllm-workspace/ray_init.sh leader --ray_cluster_size=$(LWS_GROUP_SIZE);vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 2048 --gpu-memory-utilization 0.95 --tensor-parallel-size 8 --pipeline-parallel-size 2 --enforce-eager"
+                              resources:
+                                limits:
+                                  nvidia.com/gpu: "8"
+                                  cpu: "64"
+                                  memory: 512G
+                                requests:
+                                  nvidia.com/gpu: "8"
+                                  cpu: "64"
+                                  memory: 512G           
+                              ports:
+                                - containerPort: 8000
+                              volumeMounts:
+                                - mountPath: /llm-model
+                                  name: llm-model
+                                - mountPath: /dev/shm
+                                  name: shm
+                      workerTemplate:
+                        metadata:
+                          labels: 
+                            alibabacloud.com/compute-class: gpu
+                            alibabacloud.com/compute-qos: default
+                            alibabacloud.com/gpu-model-series: H20
+                            alibabacloud.com/hpn-type: "rdma"
+                        spec:
+                          volumes:
+                            - name: llm-model
+                              persistentVolumeClaim:
+                                ## 如果使用fluid，此处应填写 fluid dataset 名字，比如：deepseek
+                                claimName: llm-model
+                            - name: shm
+                              emptyDir:
+                                medium: Memory
+                                sizeLimit: 32Gi
+                          containers:
+                            - name: deepseek-r1-671b-worker
+                              image: registry-cn-hangzhou.ack.aliyuncs.com/ack-demo/vllm:v0.7.2
+                              env:
+                                - name: NCCL_SOCKET_IFNAME #指定网卡
+                                  value: eth0
+                                - name: NCCL_IB_TC
+                                  value: "136"
+                                - name: NCCL_IB_SL
+                                  value: "5"
+                                - name: NCCL_IB_GID_INDEX
+                                  value: "3"
+                                - name: NCCL_DEBUG
+                                  value: "INFO"
+                                - name: NCCL_IB_HCA
+                                  value: "mlx5"
+                                - name: NCCL_NET_PLUGIN
+                                  value: "none"
+                                - name: VLLM_API_KEY
+                                  value: ${VllmApiKey}
+                              command:
+                                - sh
+                                - -c
+                                - "/vllm-workspace/ray_init.sh worker --ray_address=$(LWS_LEADER_ADDRESS)"
+                              resources:
+                                limits:
+                                  nvidia.com/gpu: "8"
+                                  cpu: "64"
+                                  memory: 512G
+                                requests:
+                                  nvidia.com/gpu: "8"
+                                  cpu: "64"
+                                  memory: 512G
+                              ports:
+                                - containerPort: 8000
+                              volumeMounts:
+                                - mountPath: /llm-model
+                                  name: llm-model
+                                - mountPath: /dev/shm
+                                  name: shm
+                  ---
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    name: ds-leader
+                    namespace: llm-model
+                  spec:
+                    ports:
+                      - name: http
+                        port: 8000
+                        protocol: TCP
+                        targetPort: 8000
+                    selector:
+                      leaderworkerset.sigs.k8s.io/name: deepseek-r1
+                      role: leader
+                    type: ClusterIP
+                - ServedModelName:
+                    Fn::FindInMap:
+                      - ModelMapping
+                      - ServedModelNameMap
+                      - Ref: Model
+                  VllmApiKey:
+                    Fn::Join:
+                      - '-'
+                      - - 'cn'
+                        - Fn::GetAtt:
+                            - RandomApiKey
+                            - value
+  RunDeepseekPPUCommand:
+    Type: ALIYUN::ECS::RunCommand
+    Condition: IfDeepseek-R1-PPU
+    DependsOn:
+      - RunOSSCommand
+      - EcsInstanceJumpBox
+      - AcsCluster
+      - RunInstallHelmCommand
+      - FluidModule
+      - LwsModule
+      - RandomApiKey
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            
+            echo '${ApplicationYaml}' > ~/application.yaml
+            kubectl --kubeconfig ~/.kube/config apply -f ~/application.yaml --validate=false
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            ApplicationYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: v1
+                  kind: Secret
+                  metadata:
+                    name: acs-image-secret
+                    namespace: llm-model
+                  type: kubernetes.io/dockerconfigjson
+                  data:
+                    .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJlZ3NsaW5nanVuLXJlZ2lzdHJ5LmNuLXd1bGFuY2hhYnUuY3IuYWxpeXVuY3MuY29tIjogewoJCQkiYXV0aCI6ICJiVzk1WVc5QU1Ua3dNekF4TlRBM05USXlPVEl3T1RwRGJuQkZVakEyTWxGdklRPT0iCgkJfQoJfQp9Cg==
+                  ---
+                  apiVersion: apps/v1
+                  kind: Deployment
+                  metadata:
+                    name: deepseek-r1
+                    namespace: llm-model
+                    labels:
+                      app: deepseek-r1
+                  spec:
+                    replicas: 1
+                    selector:
+                      matchLabels:
+                        app: deepseek-r1
+                    strategy:
+                      type: RollingUpdate
+                      rollingUpdate:
+                        maxSurge: 25%
+                        maxUnavailable: 25%
+                    template:
+                      metadata:
+                        labels:
+                          app: deepseek-r1
+                          alibabacloud.com/compute-class: gpu
+                          alibabacloud.com/gpu-model-series: PPU810E
+                          alibabacloud.com/compute-qos: default
+                          app: deepseek-r1
+                      spec:
+                        imagePullSecrets:
+                        - name: acs-image-secret
+                        containers:
+                        - name: llm-ds-r1
+                          env:
+                          - name: VLLM_API_KEY
+                            value: ${VllmApiKey}
+                          image: egslingjun-registry.cn-wulanchabu.cr.aliyuncs.com/egslingjun/inference-xpu-pytorch:25.03-v1.4.3-hotfix-vllm0.7.3-torch2.5-cu123-20250331
+                          imagePullPolicy: IfNotPresent
+                          command:
+                          - sh
+                          - -c
+                          - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1-GPTQ-INT8 --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 128000 --quantization moe_wna16 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 -enforce-eager"
+                          resources:
+                            limits:
+                              cpu: 176
+                              memory: 1800G
+                              alibabacloud.com/ppu: 16
+                              ephemeral-storage: 200Gi
+                            requests:
+                              cpu: 176
+                              memory: 1800G
+                              alibabacloud.com/ppu: 16
+                              ephemeral-storage: 200Gi
+                          terminationMessagePath: /dev/termination-log
+                          terminationMessagePolicy: File
+                          volumeMounts:
+                          - name: llm-model
+                            mountPath: /llm-model
+                          - mountPath: /dev/shm
+                            name: cache-volume
+                          - mountPath: /ppu-data
+                            name: ephemeral
+                        restartPolicy: Always
+                        terminationGracePeriodSeconds: 30
+                        volumes:
+                        - name: llm-model
+                          persistentVolumeClaim:
+                            claimName: llm-model
+                        - name: cache-volume
+                          emptyDir:
+                            medium: Memory
+                            sizeLimit: 500Gi
+                        - name: ephemeral
+                          emptyDir:
+                            sizeLimit: 200Gi
+                  ---
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    name: deepseek-r1
+                    namespace: llm-model
+                  spec:
+                    type: ClusterIP
+                    selector:
+                      app: deepseek-r1
+                    ports:
+                      - protocol: TCP
+                        port: 8000
+                        targetPort: 8000
+                - ServedModelName:
+                    Fn::FindInMap:
+                      - ModelMapping
+                      - ServedModelNameMap
+                      - Ref: Model
+                  VllmApiKey:
+                    Fn::Join:
+                      - '-'
+                      - - 'cn'
+                        - Fn::GetAtt:
+                            - RandomApiKey
+                            - value
+  RunCreateServiceCommand:
+    Type: ALIYUN::ECS::RunCommand
+    DependsOn:
+      - EcsInstanceJumpBox
+      - RunDeepseekPPUCommand
+      - RunDeepseekH20Command
+      - RunQwQCommand
+    Properties:
+      Sync: true
+      Type: RunShellScript
+      InstanceIds:
+        - Fn::Select:
+            - 0
+            - Fn::GetAtt:
+                - EcsInstanceJumpBox
+                - InstanceIds
+      Timeout: '300'
+      CommandContent:
+        Fn::Sub:
+          - |
+            #!/bin/bash
+            
+            wget {{ computenest::file::kubectl }} -O kubectl
+            install -o root -g root -m 0755 kubectl /usr/bin/kubectl
+            chmod +x /usr/bin/kubectl
+            mkdir -p ~/.kube
+            echo '${KubeConfig}' >> ~/.kube/config
+            sleep 10
+            
+            echo '${PrivateServiceYaml}' > ~/private_service.yaml
+            kubectl --kubeconfig ~/.kube/config apply -f ~/private_service.yaml --validate=false
+            
+            # 是否开公网
+            echo ${SupportPublicAccess}
+            if [ "${SupportPublicAccess}" = "true" ]; then
+              echo '${PublicServiceYaml}' > ~/public_service.yaml
+              kubectl --kubeconfig ~/.kube/config apply -f ~/public_service.yaml --validate=false
+            fi
+            
+            sleep 10
+          - KubeConfig:
+              Fn::GetAtt:
+                - AcsCluster
+                - PrivateUserKubConfig
+            PrivateServiceYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    name: svc-private
+                    namespace: llm-model
+                    labels:
+                      app: ${Label}
+                    annotations:
+                      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "intranet"
+                      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip-version: ipv4
+                  spec:
+                    ports:
+                      - name: serving
+                        port: 8000
+                        targetPort: 8000
+                        protocol: TCP
+                    selector:
+                      app: ${Label}
+                    type: LoadBalancer
+                - Label:
+                    Fn::If:
+                      - IfQwQ-32b
+                      - 'qwq-32b'
+                      - 'deepseek-r1'
+            PublicServiceYaml:
+              Fn::Sub:
+                - |
+                  apiVersion: v1
+                  kind: Service
+                  metadata:
+                    annotations:
+                      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: "internet"
+                      service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip-version: ipv4
+                    labels:
+                      app: ${Label}
+                    name: svc-public
+                    namespace: llm-model
+                  spec:
+                    externalTrafficPolicy: Local
+                    ports:
+                      - name: serving
+                        port: 8000
+                        protocol: TCP
+                        targetPort: 8000
+                    selector:
+                      app: ${Label}
+                    type: LoadBalancer
+                - Label:
+                    Fn::If:
+                      - IfQwQ-32b
+                      - 'qwq-32b'
+                      - 'deepseek-r1'
+            SupportPublicAccess:
+              Ref: SupportPublicAccess
+  PrivateIngressResources:
+    Type: DATASOURCE::CS::ClusterApplicationResources
+    DependsOn:
+      - RunDeepseekPPUCommand
+      - RunDeepseekH20Command
+      - RunCreateServiceCommand
+      - RunQwQCommand
+    Properties:
+      Namespace: llm-model
+      Kind: Service
+      FirstMatch: True
+      ApiVersion: v1
+      JsonPath: $.status.loadBalancer.ingress[0].ip
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      Name: svc-private
+  PublicIngressResources:
+    Type: DATASOURCE::CS::ClusterApplicationResources
+    DependsOn:
+      - RunCreateServiceCommand
+    Condition: IsPublicEnabled
+    Properties:
+      Namespace: llm-model
+      Kind: Service
+      FirstMatch: True
+      ApiVersion: v1
+      JsonPath: $.status.loadBalancer.ingress[0].ip
+      ClusterId:
+        Fn::GetAtt:
+          - AcsCluster
+          - ClusterId
+      Name: svc-public
+Mappings:
+  ModelMapping:
+    ModelNameMap:
+      'QwQ-32b': 'Qwen/QwQ-32B'
+      'DeepSeek-R1_671b_H20': 'deepseek-ai/DeepSeek-R1'
+      'DeepSeek-R1_671b_PPU': 'deepseek-ai/DeepSeek-R1-GPTQ-INT8'
+    ModelImageIdMap:
+      'QwQ-32b': 'm-2ze63ac336orlspfhxnd'
+      'DeepSeek-R1_671b_H20': 'm-2ze9ivr3h0xowq67fl4f'
+      'DeepSeek-R1_671b_PPU': 'm-2zeg4woq5yxb4njitell'
+    ModelDiskSizeMap:
+      'QwQ-32b': 160
+      'DeepSeek-R1_671b_H20': 1500
+      'DeepSeek-R1_671b_PPU': 800
+    ServedModelNameMap:
+      'QwQ-32b': 'qwq-32b'
+      'DeepSeek-R1_671b_H20': 'ds'
+      'DeepSeek-R1_671b_PPU': 'ds'
+Outputs:
+  PrivateAPIUserInstructions:
+    Label: 私网Api调用使用说明
+    Description: 私网Api调用使用说明，通过以下命令发送HTTP请求访问推理服务，修改prompt的内容，即可自定义和推理服务交互的内容
+    Value:
+      Fn::Sub:
+        - 'curl -X POST "http://${PrivateIp}:8000/v1/chat/completions" -H "Content-Type: application/json" -H "Authorization: Bearer ${VllmApiKey}" --data ''{ "model": "${ServedModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - PrivateIp:
+            Fn::GetAtt:
+              - PrivateIngressResources
+              - Response
+          ServedModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ServedModelNameMap
+              - Ref: Model
+          VllmApiKey:
+            Fn::Join:
+              - '-'
+              - - 'cn'
+                - Fn::GetAtt:
+                    - RandomApiKey
+                    - value
+  PublicAPIUserInstructions:
+    Condition: IsPublicEnabled
+    Label: 公网API调用示例
+    Description: 通过公网IP调用服务（部署时建议严格限制源IP）
+    Value:
+      Fn::Sub:
+        - 'curl -X POST "http://${PublicIP}:8000/v1/chat/completions" -H "Content-Type: application/json" -H "Authorization: Bearer ${VllmApiKey}" --data ''{ "model": "${ServedModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - PublicIP:
+            Fn::GetAtt:
+              - PublicIngressResources
+              - Response
+          ServedModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ServedModelNameMap
+              - Ref: Model
+          VllmApiKey:
+            Fn::Join:
+              - '-'
+              - - 'cn'
+                - Fn::GetAtt:
+                    - RandomApiKey
+                    - value
+Metadata:
+  ALIYUN::ROS::Interface:
+    ParameterGroups:
+      - Parameters:
+          - PayType
+          - PayPeriodUnit
+          - PayPeriod
+        Label:
+          en: PayType Configuration
+          zh-cn: 付费类型配置
+      - Parameters:
+          - Model
+          - SupportPublicAccess
+        Label:
+          en: Model Config
+          zh-cn: 模型配置
+      - Parameters:
+          - CreateAcs
+          - ClusterId
+          - ServiceCidr
+          - EcsInstanceType
+          - ZoneId1
+          - ZoneId2
+          - LoginPassword
+        Label:
+          en: Basic Configuration
+          zh-cn: 基础配置

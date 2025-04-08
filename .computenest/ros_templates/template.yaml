@@ -7,16 +7,36 @@ Conditions:
     Fn::Equals:
       - NewVPC
       - Ref: VpcOption
-  ShouldAddAuthHeader:
-    Fn::Not:
-      Fn::Equals:
-        - Ref: VllmApiKey
-        - ''
   IsPublicEnabled:
     Fn::Equals:
       - Ref: SupportPublicAccess
       - true
 Parameters:
+  Model:
+    Type: String
+    Label:
+      en: Model
+      zh-cn: 选择模型
+    AssociationPropertyMetadata:
+      ValueLabelMapping:
+        QwQ-32b:
+          zh-cn: QwQ-32b
+          en: QwQ-32b
+        DeepSeek-R1_7b:
+          zh-cn: DeepSeek-R1:7b
+          en: DeepSeek-R1:7b
+        DeepSeek-R1_32b:
+          zh-cn: DeepSeek-R1:32b
+          en: DeepSeek-R1:32b
+        DeepSeek-R1_70b:
+          zh-cn: DeepSeek-R1:70b
+          en: DeepSeek-R1:70b
+    AllowedValues:
+      - QwQ-32b
+      - DeepSeek-R1_7b
+      - DeepSeek-R1_32b
+      - DeepSeek-R1_70b
+    Default: QwQ-32b
   VpcOption:
     Type: String
     AllowedValues:
@@ -197,51 +217,115 @@ Parameters:
     Default: computenest*12345
   WorkerInstanceType:
     Type: String
+    Label:
+      en: Instance Type
+      zh-cn: 实例类型
+    Description: 如当前地域的实例规格不足或无可购买规格，请切换到北京、上海等大地域查看。
     AssociationProperty: ALIYUN::ECS::Instance::InstanceType
     AssociationPropertyMetadata:
       InstanceChargeType: ${PayType}
       ZoneId: ${ZoneId}
-    AllowedValues:
-      - ecs.gn7i-c16g1.4xlarge
-      - ecs.gn7i-c32g1.8xlarge
-      - ecs.gn7i-c32g1.16xlarge
-      - ecs.gn7i-c32g1.32xlarge
-      - ecs.gn7i-c56g1.14xlarge
-      - ecs.gn7i-c48g1.12xlarge
-      - ecs.gn7i-c48e.12xlarge
-      - ecs.gn7i-8x.16xlarge
-      - ecs.gn7i-4x.8xlarge
-      - ecs.gn7i-2x.8xlarge
-      - ecs.gn7i-8x.32xlarge
-      - ecs.gn7i-4x.16xlarge
-      - ecs.gn7e-c16g1.4xlarge
-      - ecs.gn7e-c16g1.16xlarge
-      - ecs.gn7e-c16g1.32xlarge
-      - ecs.gn7e-c16g1.8xlarge
-      - ecs.gn7s-c8g1.2xlarge
-      - ecs.gn7s-c32g1.16xlarge
-      - ecs.gn7s-c32g1.8xlarge
-      - ecs.gn7s-c32g1.32xlarge
-      - ecs.gn7s-c48g1.12xlarge
-      - ecs.gn7s-c16g1.4xlarge
-      - ecs.gn7s-c56g1.14xlarge
-      - ecs.gn7s.4xlarge
-      - ecs.gn7s.2xlarge
-      - ecs.gn7r-c16g1.4xlarge
-      - ecs.vgn6i-m8.2xlarge
-      - ecs.vgn6i-m4.xlarge
-      - ecs.ebmgn8v.48xlarge
-      - ecs.ebmgn7e.32xlarge
-      - ecs.ebmgn7ex.32xlarge
-      - ecs.ebmgn7i.32xlarge
-      - ecs.ebmgn7ix.32xlarge
-      - ecs.ebmgn7v.32xlarge
-      - ecs.ebmgn7vx.32xlarge
-      - ecs.ebmgn7.32xlarge
-      - ecs.ebmgn6i.24xlarge
-    Label:
-      en: Worker Nodes Types
-      zh-cn: Worker节点规格
+      AllowedValues:
+        - Condition:
+            Fn::Equals:
+              - '${Model}'
+              - 'QwQ-32b'
+          Value:
+            - ecs.gn7i-c32g1.32xlarge
+            - ecs.gn7i-4x.8xlarge
+            - ecs.gn7i-4x.16xlarge
+            - ecs.gn7i-8x.16xlarge
+            - ecs.gn7i-8x.32xlarge
+            - ecs.gn7e-c16g1.4xlarge
+            - ecs.gn7e-c16g1.8xlarge
+            - ecs.gn7e-c16g1.16xlarge
+            - ecs.gn7e-c16g1.32xlarge
+            - ecs.gn7s-c32g1.8xlarge
+            - ecs.gn7s-c32g1.16xlarge
+            - ecs.gn7s-c32g1.32xlarge
+            - ecs.ebmgn8v.48xlarge
+            - ecs.ebmgn7e.32xlarge
+            - ecs.ebmgn7ex.32xlarge
+            - ecs.ebmgn7i.32xlarge
+            - ecs.ebmgn7ix.32xlarge
+            - ecs.ebmgn7v.32xlarge
+            - ecs.ebmgn7vx.32xlarge
+            - ecs.ebmgn7.32xlarge
+            - ecs.ebmgn6i.24xlarge
+        - Condition:
+            Fn::Equals:
+              - '${Model}'
+              - 'DeepSeek-R1_7b'
+          Value:
+            - ecs.gn7i-c8g1.2xlarge
+            - ecs.gn7i-c16g1.4xlarge
+            - ecs.gn7i-c32g1.8xlarge
+            - ecs.gn7i-c48g1.12xlarge
+            - ecs.gn7i-c56g1.14xlarge
+            - ecs.gn7i-c32g1.16xlarge
+            - ecs.gn7i-c32g1.32xlarge
+            - ecs.gn7i-c56g1.14xlarge
+            - ecs.gn7i-c48g1.12xlarge
+            - ecs.gn7i-c48e.12xlarge
+            - ecs.gn7i-8x.16xlarge
+            - ecs.gn7i-4x.8xlarge
+            - ecs.gn7i-2x.8xlarge
+            - ecs.gn7i-8x.32xlarge
+            - ecs.gn7i-4x.16xlarge
+            - ecs.gn7e-c16g1.4xlarge
+            - ecs.gn7e-c16g1.16xlarge
+            - ecs.gn7e-c16g1.32xlarge
+            - ecs.gn7e-c16g1.8xlarge
+            - ecs.gn7s-c8g1.2xlarge
+            - ecs.gn7s-c32g1.16xlarge
+            - ecs.gn7s-c32g1.8xlarge
+            - ecs.gn7s-c32g1.32xlarge
+            - ecs.gn7s-c48g1.12xlarge
+            - ecs.gn7s-c16g1.4xlarge
+            - ecs.gn7s-c56g1.14xlarge
+            - ecs.ebmgn8v.48xlarge
+            - ecs.ebmgn7e.32xlarge
+            - ecs.ebmgn7ex.32xlarge
+            - ecs.ebmgn7i.32xlarge
+            - ecs.ebmgn7ix.32xlarge
+            - ecs.ebmgn7v.32xlarge
+            - ecs.ebmgn7vx.32xlarge
+            - ecs.ebmgn7.32xlarge
+            - ecs.ebmgn6i.24xlarge
+        - Condition:
+            Fn::Equals:
+              - '${Model}'
+              - 'DeepSeek-R1_32b'
+          Value:
+            - ecs.gn7i-c32g1.32xlarge
+            - ecs.gn7i-4x.8xlarge
+            - ecs.gn7i-4x.16xlarge
+            - ecs.gn7i-8x.16xlarge
+            - ecs.gn7i-8x.32xlarge
+            - ecs.gn7e-c16g1.4xlarge
+            - ecs.gn7e-c16g1.8xlarge
+            - ecs.gn7e-c16g1.16xlarge
+            - ecs.gn7e-c16g1.32xlarge
+            - ecs.gn7s-c32g1.8xlarge
+            - ecs.gn7s-c32g1.16xlarge
+            - ecs.gn7s-c32g1.32xlarge
+            - ecs.ebmgn8v.48xlarge
+            - ecs.ebmgn7e.32xlarge
+            - ecs.ebmgn7ex.32xlarge
+            - ecs.ebmgn7i.32xlarge
+            - ecs.ebmgn7ix.32xlarge
+            - ecs.ebmgn7v.32xlarge
+            - ecs.ebmgn7vx.32xlarge
+            - ecs.ebmgn7.32xlarge
+            - ecs.ebmgn6i.24xlarge
+        - Condition:
+            Fn::Equals:
+              - '${Model}'
+              - 'DeepSeek-R1_70b'
+          Value:
+            - ecs.gn7i-8x.16xlarge
+            - ecs.gn7i-8x.32xlarge
+            - ecs.ebmgn8v.48xlarge
   WorkerSystemDiskCategory:
     Type: String
     AllowedValues:
@@ -256,13 +340,6 @@ Parameters:
       en: Worker System Disk Category
       zh-cn: Worker 系统盘磁盘类型
     Default: cloud_essd
-  WorkerSystemDiskSize:
-    Type: Number
-    Label:
-      en: Worker System Disk Size(GB)
-      zh-cn: Worker节点系统盘大小(GB)
-    MinValue: 1
-    Default: 120
   NumOfNodes:
     Type: Number
     Label:
@@ -296,23 +373,21 @@ Parameters:
       Addons:
         - name: flannel
     Default: 172.16.0.0/16
-  VllmApiKey:
-    Type: 'String'
-    Description:
-      en: 'The API key for VLLM authentication. It is recommended to configure the ApiKey when accessing the public network.'
-      zh-cn: VLLM API密钥，建议开公网访问时配置该ApiKey。
-    Label:
-      en: VLLM API Key
-      zh-cn: VLLM API密钥
-    NoEcho: true
-    MaxLength: '256'
-    Default: ''
   SupportPublicAccess:
     Type: Boolean
     Label:
       zh-cn: 支持公网访问
       en: Support Public Access
 Resources:
+  RandomApiKey:
+    Type: ALIYUN::RandomString
+    Properties:
+      length: 29
+      character_classes:
+        - class: lowercase
+          min: 1
+        - class: digits
+          min: 1
   EcsVpc:
     Type: ALIYUN::ECS::VPC
     Condition: CreateVpcConditions
@@ -445,7 +520,10 @@ Resources:
       WorkerSystemDiskCategory:
         Ref: WorkerSystemDiskCategory
       WorkerSystemDiskSize:
-        Ref: WorkerSystemDiskSize
+        Fn::FindInMap:
+          - ModelMapping
+          - WorkerSystemDiskSizeMap
+          - Ref: Model
       LoginPassword:
         Ref: LoginPassword
       SnatEntry: true
@@ -499,7 +577,7 @@ Resources:
         Fn::GetAtt:
           - ManagedKubernetesCluster
           - ClusterId
-      HelmChartUrl: oci://compute-nest-chart-registry.cn-hangzhou.cr.aliyuncs.com/1853370294850618/ack-fluid:1.0.13
+      HelmChartUrl: oci://compute-nest-chart-registry.cn-hangzhou.cr.aliyuncs.com/1563457855438522/ack-fluid:1.0.13
       ChartValues:
         region:
           Ref: ALIYUN::Region
@@ -710,7 +788,7 @@ Resources:
               storageClassName: llm-model
               resources:
                 requests:
-                  storage: 200Gi
+                  storage: 4Ti
           - RegionId:
               Ref: ALIYUN::Region
             BucketName:
@@ -721,6 +799,8 @@ Resources:
     Type: ALIYUN::CS::ClusterApplication
     DependsOn:
       - VllmPV
+      - RandomApiKey
+      - AckNodeInstance
     Properties:
       YamlContent:
         Fn::Sub:
@@ -731,7 +811,7 @@ Resources:
               labels:
                 release: llm-model
                 ${VisibilityLabel}
-              name: llm-model
+              name: ${ModelDomainName}
               namespace: llm-model
             spec:
               template:
@@ -749,26 +829,39 @@ Resources:
                     args:
                       - -c
                       - |
-                        # 检查克隆的目录是否已经存在
+                        # 如果克隆的目录不在oss中，则下载
                         if [ ! -d "/llm-model/${ModelName}/.git" ]; then
-                          echo "Cloning the repository"
-                          # 如果是1.5b的话，则直接从通过部署物下载
-                          if [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B" ]; then
-                            wget '{{ computenest::file::deepseek_r1_1_5b }}' -O deepseek.tar.gz
-                            echo "Downloading the model from the computenest."
+                          apt-get update
+                          apt-get install pigz -y
+                          echo "Download the ${ModelName} model."
+                          cd /llm-model
+                          if [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Qwen-7B" ]; then
+                            wget -q '{{ computenest::file::deepseek_r1_7b }}' -O deepseek-r1-7b.tar.gz
                             mkdir -p /llm-model/${ModelName}
-                            tar -zxvf deepseek.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
-                            rm -rf deepseek.tar.gz
+                            tar -I pigz -xvf deepseek-r1-7b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-7b.tar.gz
                             exit 0
+                          elif [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B" ]; then
+                            wget -q  '{{ computenest::file::deepseek_r1_32b }}' -O deepseek-r1-32b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-32b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-32b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "deepseek-ai/DeepSeek-R1-Distill-Llama-70B" ]; then
+                            wget -q  '{{ computenest::file::deepseek_r1_70b }}' -O deepseek-r1-70b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf deepseek-r1-70b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf deepseek-r1-70b.tar.gz
+                            exit 0
+                          elif [ "${ModelName}" = "Qwen/QwQ-32B" ]; then
+                            wget -q  '{{ computenest::file::qwq_32b }}' -O qwq-32b.tar.gz
+                            mkdir -p /llm-model/${ModelName}
+                            tar -I pigz -xvf qwq-32b.tar.gz --strip-components=1 -C /llm-model/${ModelName}/
+                            rm -rf qwq-32b.tar.gz
+                            exit 0
+                          else
+                            echo "The ${ModelName} model does not exist."
                           fi
-                          set -ex
-                          apt-get update
-                          apt-get install -y python3-apt software-properties-common
-                          add-apt-repository -y ppa:git-core/ppa
-                          apt-get update
-                          apt-get install -y git-lfs
-                          git lfs install
-                          git clone https://www.modelscope.cn/${ModelName}.git /llm-model/${ModelName}
                         else
                           echo "Repository already cloned."
                         fi
@@ -781,12 +874,15 @@ Resources:
                     env:
                     - name: VLLM_API_KEY
                       value: ${VllmApiKey}
+                    - name: NCCL_SHM_DISABLE
+                      value: "1"
                     command:
                     - sh
                     - -c
                     - python3 -m vllm.entrypoints.openai.api_server --port 8080 --trust-remote-code
                       --served-model-name ${ModelName} --model /llm-model/${ModelName} --gpu-memory-utilization
-                      0.95 --max-model-len 4096 --enable-chunked-prefill --enforce-eager
+                      ${GpuMemoryUtilization} --max-model-len ${MaxModelLen} --tensor-parallel-size ${GpuAmount}
+                      --enable-chunked-prefill --enforce-eager
                     image: kube-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai/vllm:v0.7.2
                     imagePullPolicy: IfNotPresent
                     readinessProbe:
@@ -798,9 +894,9 @@ Resources:
                       requests:
                         cpu: "8"
                         memory: 16Gi
-                        nvidia.com/gpu: "1"
+                        nvidia.com/gpu: ${GpuAmount}
                       limits:
-                        nvidia.com/gpu: "1"
+                        nvidia.com/gpu: ${GpuAmount}
                     volumeMounts:
                     - mountPath: /llm-model # 模型所在的路径
                       name: llm-model
@@ -808,9 +904,37 @@ Resources:
                   - name: llm-model
                     persistentVolumeClaim:
                       claimName: llm-model
-          - ModelName: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+          - ModelName:
+              Fn::FindInMap:
+                - ModelMapping
+                - ModelNameMap
+                - Ref: Model
+            ModelDomainName:
+              Fn::FindInMap:
+                - ModelMapping
+                - ModelDomainNameMap
+                - Ref: Model
+            MaxModelLen:
+              Fn::FindInMap:
+                - ModelMapping
+                - MaxModelLenMap
+                - Ref: Model
+            GpuMemoryUtilization:
+              Fn::FindInMap:
+                - ModelMapping
+                - GpuMemoryUtilizationMap
+                - Ref: Model
+            GpuAmount:
+              Fn::GetAtt:
+                - AckNodeInstance
+                - GpuAmount
             VllmApiKey:
-              Ref: VllmApiKey
+              Fn::Join:
+                - '-'
+                - - 'cn'
+                  - Fn::GetAtt:
+                      - RandomApiKey
+                      - value
             VisibilityLabel:
               Fn::If:
                 - IsPublicEnabled
@@ -909,7 +1033,11 @@ Resources:
               Fn::GetAtt:
                 - OSSBucket
                 - Name
-            ModelName: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
+            ModelName:
+              Fn::FindInMap:
+                 - ModelMapping
+                 - ModelNameMap
+                 - Ref: Model
             AccessKeyId:
               Fn::GetAtt:
                 - AccessKey
@@ -918,49 +1046,125 @@ Resources:
               Fn::GetAtt:
                 - AccessKey
                 - AccessKeySecret
+  AckNodeInstance:
+    Type: DATASOURCE::ECS::Instance
+    DependsOn:
+     - ManagedKubernetesCluster
+     - KourierModule
+    Properties:
+      InstanceId:
+        Fn::Jq:
+          - First
+          - ".[0].instance_id"
+          - Fn::GetAtt:
+              - ManagedKubernetesCluster
+              - Nodes
 Outputs:
   PrivateAPIUserInstructions:
     Label: 私网Api调用使用说明
     Description: 私网Api调用使用说明，通过以下命令发送HTTP请求访问推理服务，修改prompt的内容，即可自定义和推理服务交互的内容
     Value:
       Fn::Sub:
-        - 'curl -X POST "http://${PrivateIp}/v1/chat/completions" -H "Host: llm-model.llm-model.svc.cluster.local" -H "Content-Type: application/json" ${AuthHeader} --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - 'curl -X POST "http://${PrivateIp}/v1/chat/completions" -H "Host: ${ModelDomainName}.llm-model.svc.cluster.local" -H "Content-Type: application/json" -H "Authorization: Bearer ${VllmApiKey}" --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
         - PrivateIp:
             Fn::GetAtt:
               - KourierPrivateIngressResources
               - Response
-          ModelName: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
-          AuthHeader:
-            Fn::If:
-              - ShouldAddAuthHeader
-              - Fn::Sub:
-                  - '-H "Authorization: Bearer ${VllmApiKey}"'
-                  - VllmApiKey:
-                      Ref: VllmApiKey
-              - ""
+          ModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelNameMap
+              - Ref: Model
+          ModelDomainName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelDomainNameMap
+              - Ref: Model
+          VllmApiKey:
+            Fn::Join:
+              - '-'
+              - - 'cn'
+                - Fn::GetAtt:
+                    - RandomApiKey
+                    - value
   PublicAPIUserInstructions:
     Condition: IsPublicEnabled
     Label: 公网API调用示例
     Description: 通过公网IP调用服务（部署时建议严格限制源IP）
     Value:
       Fn::Sub:
-        - 'curl -X POST "http://${PublicIP}/v1/chat/completions" -H "Host: llm-model.llm-model.example.com" -H "Content-Type: application/json" ${AuthHeader} --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
+        - 'curl -X POST "http://${PublicIP}/v1/chat/completions" -H "Host: ${ModelDomainName}.llm-model.example.com" -H "Content-Type: application/json" -H "Authorization: Bearer ${VllmApiKey}" --data ''{ "model": "${ModelName}", "messages": [ { "role": "user", "content": "Tell me the recipe for tea" } ] }'''
         - PublicIP:
             Fn::GetAtt:
               - KourierPublicIngressResources
               - Response
-          ModelName: "deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B"
-          AuthHeader:
-            Fn::If:
-              - ShouldAddAuthHeader
-              - Fn::Sub:
-                  - '-H "Authorization: Bearer ${VllmApiKey}"'
-                  - VllmApiKey:
-                      Ref: VllmApiKey
-              - ''
+          ModelName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelNameMap
+              - Ref: Model
+          ModelDomainName:
+            Fn::FindInMap:
+              - ModelMapping
+              - ModelDomainNameMap
+              - Ref: Model
+          VllmApiKey:
+            Fn::Join:
+              - '-'
+              - - 'cn'
+                - Fn::GetAtt:
+                    - RandomApiKey
+                    - value
+  API_KEY:
+    NoEcho: true
+    Label: 模型服务的API Key
+    Value:
+      Fn::Join:
+        - '-'
+        - - 'cn'
+          - Fn::GetAtt:
+              - RandomApiKey
+              - value
+Mappings:
+  ModelMapping:
+    ModelNameMap:
+      'QwQ-32b': 'Qwen/QwQ-32B'
+      'DeepSeek-R1_7b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-7B'
+      'DeepSeek-R1_32b': 'deepseek-ai/DeepSeek-R1-Distill-Qwen-32B'
+      'DeepSeek-R1_70b': 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B'
+    ModelDomainNameMap:
+      'QwQ-32b': 'qwq'
+      'DeepSeek-R1_7b': 'deepseek'
+      'DeepSeek-R1_32b': 'deepseek'
+      'DeepSeek-R1_70b': 'deepseek'
+    MaxModelLenMap:
+      'QwQ-32b': 32768
+      'DeepSeek-R1_7b': 16384
+      'DeepSeek-R1_32b': 32768
+      'DeepSeek-R1_70b': 32768
+    GpuMemoryUtilizationMap:
+      'QwQ-32b': 0.95
+      'DeepSeek-R1_7b': 0.9
+      'DeepSeek-R1_32b': 0.95
+      'DeepSeek-R1_70b': 0.95
+    WorkerSystemDiskSizeMap:
+      'QwQ-32b': 200
+      'DeepSeek-R1_7b': 80
+      'DeepSeek-R1_32b': 200
+      'DeepSeek-R1_70b': 300
 Metadata:
   ALIYUN::ROS::Interface:
     ParameterGroups:
+      - Parameters:
+          - Model
+        Label:
+          en: Select Model
+          zh-cn: 选择模型
+      - Parameters:
+          - ZoneId
+        Label:
+          en: Zone Configuration
+          zh-cn: 可用区配置
       - Parameters:
           - PayType
           - PayPeriodUnit
@@ -971,7 +1175,6 @@ Metadata:
       - Parameters:
           - WorkerInstanceType
           - WorkerSystemDiskCategory
-          - WorkerSystemDiskSize
           - NumOfNodes
           - ServiceCidr
           - PodCidr
@@ -979,11 +1182,6 @@ Metadata:
         Label:
           en: Kubernetes
           zh-cn: Kubernetes配置
-      - Parameters:
-          - ZoneId
-        Label:
-          en: Zone Configuration
-          zh-cn: 可用区配置
       - Parameters:
           - VpcOption
           - VpcId
@@ -995,7 +1193,6 @@ Metadata:
           zh-cn: 网络配置
       - Parameters:
           - SupportPublicAccess
-          - VllmApiKey
         Label:
           en: 访问配置
           zh-cn: 访问配置
