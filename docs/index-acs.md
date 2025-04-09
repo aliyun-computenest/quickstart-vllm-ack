@@ -11,7 +11,7 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 本服务在部署时支持不同的模型和GPU型号，包括：
 * QwQ32B
 * Deepseek满血版（671B，fp8），GPU：H20
-* Deepseek满血版（671B，fp8），GPU：PPU
+* Deepseek满血版（671B，int8），GPU：PPU
 
 
 ## 整体架构
