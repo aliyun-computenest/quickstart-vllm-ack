@@ -1,3 +1,12 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: acs-image-secret
+  namespace: llm-model
+type: kubernetes.io/dockerconfigjson
+data:
+  .dockerconfigjson: ewoJImF1dGhzIjogewoJCSJlZ3NsaW5nanVuLXJlZ2lzdHJ5LmNuLXd1bGFuY2hhYnUuY3IuYWxpeXVuY3MuY29tIjogewoJCQkiYXV0aCI6ICJiVzk1WVc5QU1Ua3dNekF4TlRBM05USXlPVEl3T1RwRGJuQkZVakEyTWxGdklRPT0iCgkJfQoJfQp9Cg==
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -18,7 +27,6 @@ spec:
   template:
     metadata:
       labels:
-        app: deepseek-r1
         alibabacloud.com/compute-class: gpu
         alibabacloud.com/gpu-model-series: PPU810E
         alibabacloud.com/compute-qos: default
@@ -33,7 +41,7 @@ spec:
         command:
         - sh
         - -c
-        - "vllm serve /model/DeepSeek-R1-GPTQ-INT8 --port 8000 --trust-remote-code --served-model-name ds --max-model-len 128000 --quantization moe_wna16 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enforce-eager"
+        - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ds --max-model-len 32768 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enable-chunked-prefill --enforce-eager"
         resources:
           limits:
             cpu: 176
@@ -49,7 +57,7 @@ spec:
         terminationMessagePolicy: File
         volumeMounts:
         - name: llm-model
-          mountPath: /model
+          mountPath: /llm-model
         - mountPath: /dev/shm
           name: cache-volume
         - mountPath: /ppu-data
@@ -63,7 +71,7 @@ spec:
       - name: cache-volume
         emptyDir:
           medium: Memory
-          sizeLimit: 500G
+          sizeLimit: 500Gi
       - name: ephemeral
         emptyDir:
-          sizeLimit: 200G
+          sizeLimit: 200Gi

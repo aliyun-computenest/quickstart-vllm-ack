@@ -15,43 +15,11 @@ Conditions:
     Fn::Equals:
       - Ref: Model
       - 'DeepSeek-R1_671b_PPU'
-  CreateAcsCondition:
-    Fn::Equals:
-      - Ref: CreateAcs
-      - true
   IsPublicEnabled:
     Fn::Equals:
       - Ref: SupportPublicAccess
       - true
 Parameters:
-  CreateAcs:
-    Type: Boolean
-    Description:
-      en: An existing acs cluster can be deployed by entering the cluster id. If there is no current cluster, create a new acs cluster before deploying
-      zh-cn: 已有acs集群输入集群id即可部署，当前无集群先新建acs集群再进行部署
-    Label:
-      en: Wether create acs cluster
-      zh-cn: 是否新建acs集群
-    Default: true
-  ClusterId:
-    Type: String
-    Description:
-      en: The ID of Kubernetes ClusterId in which application deployed.
-      zh-cn: 部署应用程序的K8s集群ID
-    AllowedPattern: '[0-9a-z]+$'
-    Default: null
-    Required: true
-    Label:
-      en: Kubernetes ClusterId
-      zh-cn: K8s集群ID
-    AssociationProperty: 'ALIYUN::CS::Cluster::ClusterId'
-    AssociationPropertyMetadata:
-      RegionId: '${RegionId}'
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ${CreateAcs}
-            - false
   Model:
     Type: String
     Label:
@@ -72,23 +40,17 @@ Parameters:
       - QwQ-32b
       - DeepSeek-R1_671b_H20
       - DeepSeek-R1_671b_PPU
-    Default: QwQ-32b
-  ServiceCidr:
-    Type: String
-    Description:
-      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
-      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
-    Label:
-      zh-cn: Service CIDR
-      en: Service CIDR
-    AssociationProperty: ALIYUN::CS::AcsCluster::ServiceCidr
-    AssociationPropertyMetadata:
-      Visible:
-        Condition:
-          Fn::Equals:
-            - ${CreateAcs}
-            - true
-    Default: 10.0.0.0/16
+    Default: DeepSeek-R1_671b_H20
+#  ServiceCidr:
+#    Type: String
+#    Description:
+#      zh-cn: 可选范围：10.0.0.0/16-24，172.16-31.0.0/16-24，192.168.0.0/16-24<br>不能与 VPC 及 VPC 内已有 Kubernetes 集群使用的网段重复。<font color='blue'><b>创建成功后不能修改</b></font>
+#      en: 'Optional range: 10.0.0.0/16-24, 172.16-31.0.0/16-24, 192.168.0.0/16-24<br> cannot duplicate segments already used by existing Kubernetes clusters in VPC and VPC.<font color=''blue''><b>Cannot be modified after successful creation</b></font>'
+#    Label:
+#      zh-cn: Service CIDR
+#      en: Service CIDR
+#    AssociationProperty: ALIYUN::CS::AcsCluster::ServiceCidr
+#    Default: 10.0.0.0/16
   SupportPublicAccess:
     Type: Boolean
     Label:
@@ -151,38 +113,38 @@ Parameters:
             - Fn::Equals:
                 - ${PayType}
                 - undefined
-  EcsInstanceType:
-    Type: String
-    Label:
-      en: Instance Type
-      zh-cn: 实例类型
-    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
-  ZoneId1:
-    Type: String
-    Description:
-      zh-cn: 可用区1
-      en: ZoneId
-    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
-    AssociationPropertyMetadata:
-      InstanceType: ${EcsInstanceType}
-      ExclusiveTo:
-        - ZoneId2
-    Label:
-      en: Zone ID
-      zh-cn: 可用区1
-  ZoneId2:
-    Type: String
-    Description:
-      zh-cn: 可用区2
-      en: ZoneId
-    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
-    AssociationPropertyMetadata:
-      InstanceType: ${EcsInstanceType}
-      ExclusiveTo:
-        - ZoneId1
-    Label:
-      en: Zone ID
-      zh-cn: 可用区2
+#  EcsInstanceType:
+#    Type: String
+#    Label:
+#      en: Instance Type
+#      zh-cn: 实例类型
+#    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
+#  ZoneId1:
+#    Type: String
+#    Description:
+#      zh-cn: 可用区1
+#      en: ZoneId
+#    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+#    AssociationPropertyMetadata:
+#      InstanceType: ${EcsInstanceType}
+#      ExclusiveTo:
+#        - ZoneId2
+#    Label:
+#      en: Zone ID
+#      zh-cn: 可用区1
+#  ZoneId2:
+#    Type: String
+#    Description:
+#      zh-cn: 可用区2
+#      en: ZoneId
+#    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+#    AssociationPropertyMetadata:
+#      InstanceType: ${EcsInstanceType}
+#      ExclusiveTo:
+#        - ZoneId1
+#    Label:
+#      en: Zone ID
+#      zh-cn: 可用区2
   LoginPassword:
     NoEcho: true
     Type: String
@@ -210,8 +172,7 @@ Resources:
       VpcId:
         Ref: EcsVpc
       CidrBlock: 192.168.0.0/24
-      ZoneId:
-        Ref: ZoneId1
+      ZoneId: cn-beijing-l
   EcsVSwitch2:
     Type: ALIYUN::ECS::VSwitch
     DependsOn: EcsVpc
@@ -219,8 +180,7 @@ Resources:
       VpcId:
         Ref: EcsVpc
       CidrBlock: 192.168.1.0/24
-      ZoneId:
-        Ref: ZoneId2
+      ZoneId: cn-beijing-d
   EcsSecurityGroup:
     Type: ALIYUN::ECS::SecurityGroup
     Properties:
@@ -287,8 +247,7 @@ Resources:
       Name:
         Ref: ALIYUN::StackName
       EndpointPublicAccess: false
-      ServiceCidr:
-        Ref: ServiceCidr
+      ServiceCidr: 10.0.0.0/16
       ClusterSpec: ack.pro.small
       LoggingType: sls
       SnatEntry: true
@@ -298,8 +257,8 @@ Resources:
       VpcId:
         Ref: EcsVpc
       ZoneIds:
-        - Ref: ZoneId1
-        - Ref: ZoneId2
+        - cn-beijing-d
+        - cn-beijing-l
       PodVSwitchIds:
         - Ref: EcsVSwitch1
         - Ref: EcsVSwitch2
@@ -318,10 +277,8 @@ Resources:
           - ModelMapping
           - ModelImageIdMap
           - Ref: Model
-      InstanceType:
-        Ref: EcsInstanceType
-      ZoneId:
-        Ref: ZoneId1
+      InstanceType: 'ecs.c7nex.8xlarge'
+      ZoneId: cn-beijing-l
       VpcId:
         Ref: EcsVpc
       VSwitchId:
@@ -435,12 +392,6 @@ Resources:
                     Fn::GetAtt:
                       - OSSBucket
                       - Name
-  ClusterUserKubeconfig:
-    Type: DATASOURCE::CS::ClusterUserKubeconfig
-    Properties:
-      ClusterId:
-        Ref: ClusterId
-      PrivateIpAddress: true
   RandomApiKey:
     Type: ALIYUN::RandomString
     Properties:
@@ -452,7 +403,6 @@ Resources:
           min: 1
   RunOSSCommand:
     Type: ALIYUN::ECS::RunCommand
-    Condition: CreateAcsCondition
     DependsOn:
       - EcsInstanceJumpBox
       - OSSBucket
@@ -993,7 +943,7 @@ Resources:
     Type: ALIYUN::ECS::RunCommand
     Condition: IfDeepseek-R1
     DependsOn:
-      - RunOSSCommand
+      - RunPreDeployCommand
       - EcsInstanceJumpBox
       - AcsCluster
       - RunInstallHelmCommand
@@ -1028,153 +978,70 @@ Resources:
             ApplicationYaml:
               Fn::Sub:
                 - |
-                  apiVersion: leaderworkerset.x-k8s.io/v1
-                  kind: LeaderWorkerSet
+                  apiVersion: apps/v1
+                  kind: Deployment
                   metadata:
                     name: deepseek-r1
                     namespace: llm-model
+                    labels:
+                      app: deepseek-r1
                   spec:
                     replicas: 1
-                    leaderWorkerTemplate:
-                      size: 2 #leader和worker的总数量
-                      restartPolicy: RecreateGroupOnPodRestart
-                      leaderTemplate:
-                        metadata:
-                          labels: 
-                            role: leader
-                            app: deepseek-r1
-                            alibabacloud.com/compute-class: gpu  #指定GPU类型 
-                            alibabacloud.com/compute-qos: default #指定acs qos等级
-                            alibabacloud.com/gpu-model-series: H20 ##指定GPU型号
-                            # 指定让应用运行在高性能网络RDMA中，支持RDMA的GPU型号请提交工单咨询
-                            alibabacloud.com/hpn-type: "rdma"
-                        spec:
-                          volumes:
-                            - name: llm-model
-                              persistentVolumeClaim:
-                                ## 如果使用fluid，此处应填写 fluid dataset 名字，比如：deepseek
-                                claimName: llm-model
-                            - name: shm
-                              emptyDir:
-                                medium: Memory
-                                sizeLimit: 32Gi
-                          containers:
-                            - name: deepseek-r1-671b-leader
-                              image: registry-cn-hangzhou.ack.aliyuncs.com/ack-demo/vllm:v0.7.2
-                              env:
-                                - name: NCCL_SOCKET_IFNAME #指定网卡
-                                  value: eth0
-                                - name: NCCL_IB_TC
-                                  value: "136"
-                                - name: NCCL_IB_SL
-                                  value: "5"
-                                - name: NCCL_IB_GID_INDEX
-                                  value: "3"
-                                - name: NCCL_DEBUG
-                                  value: "INFO"
-                                - name: NCCL_IB_HCA
-                                  value: "mlx5"
-                                - name: NCCL_NET_PLUGIN
-                                  value: "none"
-                                - name: VLLM_API_KEY
-                                  value: ${VllmApiKey}
-                              command:
-                                - sh
-                                - -c
-                                - "/vllm-workspace/ray_init.sh leader --ray_cluster_size=$(LWS_GROUP_SIZE);vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 2048 --gpu-memory-utilization 0.95 --tensor-parallel-size 8 --pipeline-parallel-size 2 --enforce-eager"
-                              resources:
-                                limits:
-                                  nvidia.com/gpu: "8"
-                                  cpu: "64"
-                                  memory: 512G
-                                requests:
-                                  nvidia.com/gpu: "8"
-                                  cpu: "64"
-                                  memory: 512G           
-                              ports:
-                                - containerPort: 8000
-                              volumeMounts:
-                                - mountPath: /llm-model
-                                  name: llm-model
-                                - mountPath: /dev/shm
-                                  name: shm
-                      workerTemplate:
-                        metadata:
-                          labels: 
-                            alibabacloud.com/compute-class: gpu
-                            alibabacloud.com/compute-qos: default
-                            alibabacloud.com/gpu-model-series: H20
-                            alibabacloud.com/hpn-type: "rdma"
-                        spec:
-                          volumes:
-                            - name: llm-model
-                              persistentVolumeClaim:
-                                ## 如果使用fluid，此处应填写 fluid dataset 名字，比如：deepseek
-                                claimName: llm-model
-                            - name: shm
-                              emptyDir:
-                                medium: Memory
-                                sizeLimit: 32Gi
-                          containers:
-                            - name: deepseek-r1-671b-worker
-                              image: registry-cn-hangzhou.ack.aliyuncs.com/ack-demo/vllm:v0.7.2
-                              env:
-                                - name: NCCL_SOCKET_IFNAME #指定网卡
-                                  value: eth0
-                                - name: NCCL_IB_TC
-                                  value: "136"
-                                - name: NCCL_IB_SL
-                                  value: "5"
-                                - name: NCCL_IB_GID_INDEX
-                                  value: "3"
-                                - name: NCCL_DEBUG
-                                  value: "INFO"
-                                - name: NCCL_IB_HCA
-                                  value: "mlx5"
-                                - name: NCCL_NET_PLUGIN
-                                  value: "none"
-                                - name: VLLM_API_KEY
-                                  value: ${VllmApiKey}
-                              command:
-                                - sh
-                                - -c
-                                - "/vllm-workspace/ray_init.sh worker --ray_address=$(LWS_LEADER_ADDRESS)"
-                              resources:
-                                limits:
-                                  nvidia.com/gpu: "8"
-                                  cpu: "64"
-                                  memory: 512G
-                                requests:
-                                  nvidia.com/gpu: "8"
-                                  cpu: "64"
-                                  memory: 512G
-                              ports:
-                                - containerPort: 8000
-                              volumeMounts:
-                                - mountPath: /llm-model
-                                  name: llm-model
-                                - mountPath: /dev/shm
-                                  name: shm
-                  ---
-                  apiVersion: v1
-                  kind: Service
-                  metadata:
-                    name: ds-leader
-                    namespace: llm-model
-                  spec:
-                    ports:
-                      - name: http
-                        port: 8000
-                        protocol: TCP
-                        targetPort: 8000
                     selector:
-                      leaderworkerset.sigs.k8s.io/name: deepseek-r1
-                      app: deepseek-r1
-                    type: ClusterIP
+                      matchLabels:
+                        app: deepseek-r1
+                    strategy:
+                      type: RollingUpdate
+                      rollingUpdate:
+                        maxSurge: 25%
+                        maxUnavailable: 25%
+                    template:
+                      metadata:
+                        labels:
+                          app: deepseek-r1
+                          alibabacloud.com/compute-class: gpu
+                          alibabacloud.com/gpu-model-series: H20
+                          alibabacloud.com/hpn-type: "rdma"
+                      spec:
+                        imagePullSecrets:
+                        - name: acs-image-secret
+                        containers:
+                        - name: llm-ds-r1
+                          image: egslingjun-registry.cn-wulanchabu.cr.aliyuncs.com/egslingjun/inference-nv-pytorch:25.03-vllm0.8.2-pytorch2.6-cu124-20250328-serverless
+                          imagePullPolicy: IfNotPresent
+                          command:
+                          - sh
+                          - -c
+                          - "vllm serve /llm-model/${ModelName} --port 8000 --trust-remote-code --served-model-name ds --max-model-len 32768 --gpu-memory-utilization 0.98 --tensor-parallel-size 8 --enable-chunked-prefill --enforce-eager"
+                          resources:
+                            limits:
+                              nvidia.com/gpu: "8"
+                              cpu: "16"
+                              memory: 128Gi
+                          volumeMounts:
+                          - name: llm-model
+                            mountPath: /llm-model
+                          - name: shm
+                            mountPath: /dev/shm
+                        restartPolicy: Always
+                        terminationGracePeriodSeconds: 30
+                        volumes:
+                        - name: llm-model
+                          persistentVolumeClaim:
+                            claimName: llm-model
+                        - name: shm
+                          emptyDir:
+                            medium: Memory
+                            sizeLimit: 32Gi
                 - ServedModelName:
                     Fn::FindInMap:
                       - ModelMapping
                       - ServedModelNameMap
+                      - Ref: Model
+                  ModelName:
+                    Fn::FindInMap:
+                      - ModelMapping
+                      - ModelNameMap
                       - Ref: Model
                   VllmApiKey:
                     Fn::Join:
@@ -1187,7 +1054,7 @@ Resources:
     Type: ALIYUN::ECS::RunCommand
     Condition: IfDeepseek-R1-PPU
     DependsOn:
-      - RunOSSCommand
+      - RunPreDeployCommand
       - EcsInstanceJumpBox
       - AcsCluster
       - RunInstallHelmCommand
@@ -1269,7 +1136,7 @@ Resources:
                           command:
                           - sh
                           - -c
-                          - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1-GPTQ-INT8 --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 128000 --quantization moe_wna16 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enforce-eager"
+                          - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ds --max-model-len 128000 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enable-chunked-prefill --enforce-eager"
                           resources:
                             limits:
                               cpu: 176
@@ -1545,13 +1412,11 @@ Metadata:
           en: Model Config
           zh-cn: 模型配置
       - Parameters:
-          - CreateAcs
-          - ClusterId
-          - ServiceCidr
-          - EcsInstanceType
-          - ZoneId1
-          - ZoneId2
+#          - ServiceCidr
+#          - EcsInstanceType
+#          - ZoneId1
+#          - ZoneId2
           - LoginPassword
         Label:
           en: Basic Configuration
-          zh-cn: 基础配置
+          zh-cn: 跳板机配置
