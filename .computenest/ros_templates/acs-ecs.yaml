@@ -1473,7 +1473,7 @@ Mappings:
     ModelImageIdMap:
       'QwQ-32b': 'm-2ze63ac336orlspfhxnd'
       'DeepSeek-R1_671b_H20': 'm-2ze9ivr3h0xowq67fl4f'
-      'DeepSeek-R1_671b_PPU': 'm-2zeg4woq5yxb4njitell'
+      'DeepSeek-R1_671b_PPU': 'm-2zed0px5v2iqq54a21d9'
     ModelDiskSizeMap:
       'QwQ-32b': 160
       'DeepSeek-R1_671b_H20': 1500

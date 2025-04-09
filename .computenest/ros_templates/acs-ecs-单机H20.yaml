@@ -1136,7 +1136,7 @@ Resources:
                           command:
                           - sh
                           - -c
-                          - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ds --max-model-len 128000 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enable-chunked-prefill --enforce-eager"
+                          - "vllm serve /llm-model/${ModelName} --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 128000 --quantization moe_wna16 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enforce-eager"
                           resources:
                             limits:
                               cpu: 176
@@ -1188,6 +1188,11 @@ Resources:
                     Fn::FindInMap:
                       - ModelMapping
                       - ServedModelNameMap
+                      - Ref: Model
+                  ModelName:
+                    Fn::FindInMap:
+                      - ModelMapping
+                      - ModelNameMap
                       - Ref: Model
                   VllmApiKey:
                     Fn::Join:
@@ -1340,7 +1345,7 @@ Mappings:
     ModelImageIdMap:
       'QwQ-32b': 'm-2ze63ac336orlspfhxnd'
       'DeepSeek-R1_671b_H20': 'm-2ze9ivr3h0xowq67fl4f'
-      'DeepSeek-R1_671b_PPU': 'm-2zeg4woq5yxb4njitell'
+      'DeepSeek-R1_671b_PPU': 'm-2zed0px5v2iqq54a21d9'
     ModelDiskSizeMap:
       'QwQ-32b': 160
       'DeepSeek-R1_671b_H20': 1500
