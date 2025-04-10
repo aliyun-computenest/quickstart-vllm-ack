@@ -1,8 +1,9 @@
-# 基于双ECS实例的DeepSeek-R1满血版和DeepSeek-V3模型部署文档
+# 基于双ECS实例的DeepSeek-R1和V3模型部署文档
 
 ## 部署说明
-本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，30分钟内即可通过双Ecs实例部署使用DeepSeek-R1满血版和DeepSeek-V3模型。
+本服务提供了基于ECS镜像+Vllm+Ray的大模型一键部署方案，30分钟即可通过双ECS实例部署使用DeepSeek-R1满血版和DeepSeek-V3模型。
 本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受DeepSeek-R1满血版和DeepSeek-V3的推理体验。
+本服务提供的方案下，以平均每次请求的token为10kb计算，采用两台H20规格的ECS实例，DeepSeek-R1满血版理论可支持的每秒并发请求数(QPS)约为75，DeepSeek-V3约为67。
 
 
 ## 整体架构
@@ -32,24 +33,24 @@
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM推理服务)。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
-    ![deploy-ecs-one-1.png](deploy-ecs-one-1.png)
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM推理服务(ECS版))。选择双机版，并确认已申请H20实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
+    ![deploy-ecs-two-1.png](deploy-ecs-two-1.png)
     ![deploy-ecs-one-2.png](deploy-ecs-one-2.png)
 2. 点击**下一步：确认订单**后可以看到价格预览，随后可点击**立即部署**，等待部署完成。(提示RAM权限不足时需要为子账号添加RAM权限)
-    ![price-ecs-one.png](price-ecs-one.png)
+    ![price-ecs-two.png](price-ecs-two.png)
 3. 等待部署完成后，就可以开始使用服务了。点击服务实例名称，进入服务实例详情，使用Api调用示例即可访问服务。如果是内网访问，需保证ECS实例在同一个VPC下。
-    ![deploying-ecs-one.png](deploying-ecs-one.png)
-    ![result-ecs-one-1.png](result-ecs-one-1.png)
-    ![result-ecs-one-2.png](result-ecs-one-2.png)
+    ![deploying-ecs-two.png](deploying-ecs-two.png)
+    ![result-ecs-two-1.png](result-ecs-two-1.png)
+    ![result-ecs-two-2.png](result-ecs-two-2.png)
 
 ## 使用说明
 
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
-    ![result-ecs-one-2.png](result-ecs-one-2.png)
-    ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
-    ![private-ip-ecs-one-2.png](private-ip-ecs-one-2.png)
+    ![result-ecs-two-2.png](result-ecs-two-2.png)
+    ![private-ip-ecs-two-1.png](private-ip-ecs-two-1.png)
+    ![private-ip-ecs-two-2.png](private-ip-ecs-two-2.png)
 ### 公网API访问
 复制Api调用示例，在本地终端中粘贴Api调用示例即可。
-    ![result-ecs-one-2.png](result-ecs-one-2.png)
-    ![public-ip-ecs-one-1.png](public-ip-ecs-one-1.png)
+    ![result-ecs-two-2.png](result-ecs-two-2.png)
+    ![public-ip-ecs-two-1.png](public-ip-ecs-two-1.png)
