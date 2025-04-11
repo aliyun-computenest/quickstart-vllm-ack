@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>基于单ECS实例的LLM模型部署文档 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#ecsllm">基于单ECS实例的LLM模型部署文档</a></li>
+              
+                  <li><a href="#_1">部署说明</a></li>
+                  
+              
+                  <li><a href="#_2">整体架构</a></li>
+                  
+              
+                  <li><a href="#_3">计费说明</a></li>
+                  
+              
+                  <li><a href="#ram">RAM账号所需权限</a></li>
+                  
+              
+                  <li><a href="#_4">部署流程</a></li>
+                  
+              
+                  <li><a href="#_5">使用说明</a></li>
+                  
+                      <li class="li-h3"><a href="#api">内网API访问</a></li>
+                  
+                      <li class="li-h3"><a href="#api_1">公网API访问</a></li>
+                  
+              
+                  <li><a href="#_6">性能测试</a></li>
+                  
+                      <li class="li-h3"><a href="#8a10">8*A10规格</a></li>
+                  
+                      <li class="li-h3"><a href="#4a10">4*A10规格</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="ecsllm">基于单ECS实例的LLM模型部署文档</h1>
+<h2 id="_1">部署说明</h2>
+<p>本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，10分钟即可部署使用QwQ-32B模型，15分钟即可部署使用Deepseek-R1-70B模型。</p>
+<p>本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受主流LLM（如Qwen、DeepSeek等）的推理体验。</p>
+<p>本服务提供的方案下，以平均每次请求的token为10kb计算，采用4张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数(QPS)约为13.1；采用8张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数约为24.1，Deepseek-R1-70B约为9.5。</p>
+<h2 id="_2">整体架构</h2>
+<p><img alt="arch-ecs-one.png" src="../arch-ecs-one.png" /></p>
+<h2 id="_3">计费说明</h2>
+<p>本服务在阿里云上的费用主要涉及：
+* 所选GPU云服务器的规格
+* 节点数量
+* 磁盘容量
+* 公网带宽
+计费方式：按量付费（小时）或包年包月
+预估费用在创建实例时可实时看到。</p>
+<h2 id="ram">RAM账号所需权限</h2>
+<p>部署服务实例，需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。</p>
+<table>
+<thead>
+<tr>
+<th>权限策略名称</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AliyunECSFullAccess</td>
+<td>管理云服务器服务（ECS）的权限</td>
+</tr>
+<tr>
+<td>AliyunVPCFullAccess</td>
+<td>管理专有网络（VPC）的权限</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>管理资源编排服务（ROS）的权限</td>
+</tr>
+<tr>
+<td>AliyunComputeNestUserFullAccess</td>
+<td>管理计算巢服务（ComputeNest）的用户侧权限</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">部署流程</h2>
+<ol>
+<li>单击<a href="https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&amp;ServiceName=LLM推理服务(ECS版)">部署链接</a>。选择单机版。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击<strong>下一步：确认订单</strong>。
+    <img alt="deploy-ecs-one-1.png" src="../deploy-ecs-one-1.png" />
+    <img alt="deploy-ecs-one-2.png" src="../deploy-ecs-one-2.png" /></li>
+<li>点击<strong>下一步：确认订单</strong>后可以看到价格预览，随后可点击<strong>立即部署</strong>，等待部署完成。(提示RAM权限不足时需要为子账号添加RAM权限)
+    <img alt="price-ecs-one.png" src="../price-ecs-one.png" /></li>
+<li>等待部署完成后，就可以开始使用服务了。点击服务实例名称，进入服务实例详情，使用Api调用示例即可访问服务。如果是内网访问，需保证ECS实例在同一个VPC下。
+    <img alt="deploying-ecs-one.png" src="../deploying-ecs-one.png" />
+    <img alt="result-ecs-one-1.png" src="../result-ecs-one-1.png" />
+    <img alt="result-ecs-one-2.png" src="../result-ecs-one-2.png" /></li>
+<li>ssh访问ECS实例后，执行 docker logs vllm 即可查询模型服务部署日志。当您看到下图所示结果时，表示模型服务部署成功。模型所在路径为/root/llm_model/。
+    <img alt="deployed.png" src="../deployed.png" /></li>
+</ol>
+<h2 id="_5">使用说明</h2>
+<h3 id="api">内网API访问</h3>
+<p>复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
+    <img alt="result-ecs-one-2.png" src="../result-ecs-one-2.png" />
+    <img alt="private-ip-ecs-one-1.png" src="../private-ip-ecs-one-1.png" />
+    <img alt="private-ip-ecs-one-2.png" src="../private-ip-ecs-one-2.png" /></p>
+<h3 id="api_1">公网API访问</h3>
+<p>复制Api调用示例，在本地终端中粘贴Api调用示例即可。
+    <img alt="result-ecs-one-2.png" src="../result-ecs-one-2.png" />
+    <img alt="public-ip-ecs-one-1.png" src="../public-ip-ecs-one-1.png" /></p>
+<h2 id="_6">性能测试</h2>
+<p>本服务方案下，针对QwQ-32B在4<em>A10和8</em>A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。</p>
+<h3 id="8a10">8*A10规格</h3>
+<h4 id="qps10">QPS为10</h4>
+<p><img alt="img.png" src="../qps10-8a10-ecs-one.png" /></p>
+<h4 id="qps20">QPS为20</h4>
+<p><img alt="qps20-8a10-ecs-one.png" src="../qps20-8a10-ecs-one.png" /></p>
+<h4 id="qps50">QPS为50</h4>
+<p><img alt="qps50-8a10-ecs-one.png" src="../qps50-8a10-ecs-one.png" /></p>
+<h3 id="4a10">4*A10规格</h3>
+<h4 id="qps10_1">QPS为10</h4>
+<p><img alt="qps10-4a10-ecs-one.png" src="../qps10-4a10-ecs-one.png" /></p>
+<h4 id="qps20_1">QPS为20</h4>
+<p><img alt="qps20-4a10-ecs-one.png" src="../qps20-4a10-ecs-one.png" /></p>
+<h4 id="qps50_1">QPS为50</h4>
+<p><img alt="qps50-4a10-ecs-one.png" src="../qps50-4a10-ecs-one.png" /></p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2025-04-11 09:25:35.079067+00:00
+  -->
+</body>
+</html>
