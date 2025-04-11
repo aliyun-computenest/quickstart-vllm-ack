@@ -49,6 +49,14 @@
 
 ## 使用说明
 
+### 查询模型部署参数
+
+1. 复制服务实例名称。到[资源编排控制台](https://ros.console.aliyun.com/cn-hangzhou/stacks)查看对应的资源栈。
+    ![ros-stack-1.png](ros-stack-1.png)
+    ![ros-stack-2.png](ros-stack-2.png)
+2. 进入服务实例对应的资源栈，可以看到所开启的全部资源，并查看到模型部署过程中执行的全部脚本。
+    ![ros-stack-3.png](ros-stack-3.png)
+
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
     ![result-ecs-two-2.png](result-ecs-two-2.png)
@@ -69,3 +77,32 @@
 ### Deepseek-V3
 #### QPS为60
 ![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
+
+### 压测过程(供参考)
+>**前提条件：** 1. 无法直接测试带api-key的模型服务，需要修改benchmark_serving.py使其允许传入api-key；2. 需要公网。
+>
+
+以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。
+    
+    yum install -y git-lfs
+    git lfs install
+    git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
+    git lfs clone https://github.com/vllm-project/vllm.git
+    
+    docker exec vllm bash -c "
+    pip install pandas datasets &&
+    python3 /root/vllm/benchmarks/benchmark_serving.py \
+    --backend vllm \
+    --model /root/llm-model/deepseek-ai/DeepSeek-R1 \
+    --served-model-name deepseek-ai/DeepSeek-R1 \
+    --sonnet-input-len 1024 \
+    --sonnet-output-len 6 \
+    --sonnet-prefix-len 50 \
+    --num-prompts 1500 \
+    --request-rate 75 \
+    --port 8080 \
+    --trust-remote-code \
+    --dataset-name sharegpt \
+    --save-result \
+    --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
+    "
