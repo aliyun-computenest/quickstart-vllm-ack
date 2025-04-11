@@ -44,6 +44,8 @@
     ![deploying-ecs-two.png](deploying-ecs-two.png)
     ![result-ecs-two-1.png](result-ecs-two-1.png)
     ![result-ecs-two-2.png](result-ecs-two-2.png)
+4. ssh访问ECS实例后，执行 docker logs vllm 即可查询模型服务部署日志。当您看到下图所示结果时，表示模型服务部署成功。模型所在路径为/root/llm_model/。
+   ![deployed.png](deployed.png)
 
 ## 使用说明
 
@@ -56,3 +58,14 @@
 复制Api调用示例，在本地终端中粘贴Api调用示例即可。
     ![result-ecs-two-2.png](result-ecs-two-2.png)
     ![public-ip-ecs-two-1.png](public-ip-ecs-two-1.png)
+
+## 性能测试
+本服务方案下，针对Deepseek-R1和V3，分别测试QPS为75和60情况下模型服务的推理响应性能，压测持续时间均为20s。
+
+### Deepseek-R1
+#### QPS为75
+![qps75-r1-ecs-two.png](qps75-r1-ecs-two.png)
+
+### Deepseek-V3
+#### QPS为60
+![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
