@@ -67,6 +67,27 @@
     ![result-ecs-two-2.png](result-ecs-two-2.png)
     ![public-ip-ecs-two-1.png](public-ip-ecs-two-1.png)
 
+## 使用 Chatbox 客户端配置 vLLM API 进行对话(可选)
+
+1. 访问 Chatbox [下载地址](https://chatboxai.app/zh#download)下载并安装客户端，本方案以 macOS M3 为例。
+   ![install-chatbox-1.png](install-chatbox-1.png)
+2. 运行并配置 vLLM API ，单击设置。
+   ![install-chatbox-2.png](install-chatbox-2.png)
+3. 在弹出的看板中按照如下表格进行配置。
+
+| 项目                              | 说明                         |示例值 |
+|---------------------------------|----------------------------|----------------------------|
+| 模型提供方            | 下拉选择模型提供方。          | 添加自定义提供方 |
+| 名称             | 填写定义模型提供方名称。             | vLLM API |
+| API 域名            | 填写模型服务调用地址。           | http://<ECS公网IP>:8000 |
+| API 路径 | 填写 API 路径。 | /v1/chat/completions |
+| 网络兼容性             | 点击开启改善网络兼容性             | 开启 |
+| API 密钥            | 填写模型服务调用 API 密钥。           | 部署服务实例后，在服务实例页面可获取Api_Key
+| 模型 | 填写调用的模型。 | deepseek-ai/DeepSeek-R1 |
+
+4. 保存配置。在文本输入框中可以进行对话交互。输入问题你是谁？或者其他指令后，调用模型服务获得相应的响应。
+   ![install-chatbox-3.png](install-chatbox-3.png)
+
 ## 性能测试
 本服务方案下，针对Deepseek-R1和V3，分别测试QPS为75和60情况下模型服务的推理响应性能，压测持续时间均为20s。
 
@@ -80,7 +101,6 @@
 
 ### 压测过程(供参考)
 >**前提条件：** 1. 无法直接测试带api-key的模型服务，需要修改benchmark_serving.py使其允许传入api-key；2. 需要公网。
->
 
 以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。
     

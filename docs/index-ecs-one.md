@@ -49,6 +49,14 @@
 
 ## 使用说明
 
+### 查询模型部署参数
+
+1. 复制服务实例名称。到[资源编排控制台](https://ros.console.aliyun.com/cn-hangzhou/stacks)查看对应的资源栈。
+   ![ros-stack-1.png](ros-stack-1.png)
+   ![ros-stack-2.png](ros-stack-2.png)
+2. 进入服务实例对应的资源栈，可以看到所开启的全部资源，并查看到模型部署过程中执行的全部脚本。
+   ![ros-stack-ecs-one-1.png](ros-stack-ecs-one-1.png)
+
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
     ![result-ecs-one-2.png](result-ecs-one-2.png)
@@ -58,6 +66,27 @@
 复制Api调用示例，在本地终端中粘贴Api调用示例即可。
     ![result-ecs-one-2.png](result-ecs-one-2.png)
     ![public-ip-ecs-one-1.png](public-ip-ecs-one-1.png)
+
+## 使用 Chatbox 客户端配置 vLLM API 进行对话(可选)
+
+1. 访问 Chatbox [下载地址](https://chatboxai.app/zh#download)下载并安装客户端，本方案以 macOS M3 为例。
+    ![install-chatbox-1.png](install-chatbox-1.png)
+2. 运行并配置 vLLM API ，单击设置。
+    ![install-chatbox-2.png](install-chatbox-2.png)
+3. 在弹出的看板中按照如下表格进行配置。
+
+| 项目                              | 说明                         |示例值 |
+|---------------------------------|----------------------------|----------------------------|
+| 模型提供方            | 下拉选择模型提供方。          | 添加自定义提供方 |
+| 名称             | 填写定义模型提供方名称。             | vLLM API |
+| API 域名            | 填写模型服务调用地址。           | http://<ECS公网IP>:8000 |
+| API 路径 | 填写 API 路径。 | /v1/chat/completions |
+| 网络兼容性             | 点击开启改善网络兼容性             | 开启 |
+| API 密钥            | 填写模型服务调用 API 密钥。           | 部署服务实例后，在服务实例页面可获取Api_Key
+| 模型 | 填写调用的模型。 | Qwen/QwQ-32B |
+
+4. 保存配置。在文本输入框中可以进行对话交互。输入问题你是谁？或者其他指令后，调用模型服务获得相应的响应。
+    ![install-chatbox-3.png](install-chatbox-3.png)
 
 ## 性能测试
 本服务方案下，针对QwQ-32B在4*A10和8*A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。
@@ -81,3 +110,31 @@
 
 #### QPS为50
 ![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)
+
+### 压测过程(供参考)
+>**前提条件：** 1. 无法直接测试带api-key的模型服务，需要修改benchmark_serving.py使其允许传入api-key；2. 需要公网。
+
+以QwQ-32B为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。
+
+    yum install -y git-lfs
+    git lfs install
+    git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
+    git lfs clone https://github.com/vllm-project/vllm.git
+    
+    docker exec vllm bash -c "
+    pip install pandas datasets &&
+    python3 /root/vllm/benchmarks/benchmark_serving.py \
+    --backend vllm \
+    --model /root/llm-model/Qwen/QwQ-32B \
+    --served-model-name Qwen/QwQ-32B \
+    --sonnet-input-len 1024 \
+    --sonnet-output-len 6 \
+    --sonnet-prefix-len 50 \
+    --num-prompts 400 \
+    --request-rate 20 \
+    --port 8080 \
+    --trust-remote-code \
+    --dataset-name sharegpt \
+    --save-result \
+    --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
+    "
