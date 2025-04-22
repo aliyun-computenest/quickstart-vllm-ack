@@ -11,7 +11,7 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 本服务在部署时支持不同的模型和GPU型号，包括：
 * QwQ32B
 * Deepseek满血版（671B，fp8），GPU：H20
-* Deepseek满血版（671B，int8），GPU：PPU
+* Deepseek满血版（671B，fp8），GPU：PPU
 
 
 ## 整体架构
@@ -22,6 +22,8 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 本服务在阿里云上的费用主要涉及：
 * ACS费用
 * 跳板机ECS费用
+  * 说明：该ECS用于部署和管理K8S集群，/root目录中保存了部署所用到的K8S Yaml资源文件，后期需要修改了参数重新部署可以直接在该基础上修改后重新执行kubectl apply。
+    部署完成如不需要也可自行释放。
 * OSS费用
 计费方式：按量付费（小时）或包年包月
 预估费用在创建实例时可实时看到。
@@ -44,7 +46,7 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=Vllm大语言模型部署)。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1(ACS%E7%89%88))。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy.png](deploy.png)
 
 2. 点击**下一步：确认订单**后可以也看到价格预览，随后点击**立即部署**，等待部署完成。
@@ -58,7 +60,7 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 ### 私网API访问
 1. 在和服务器同一VPC内的ECS中访问概览页的**私网API地址**。访问示例如下：
     ```shell
-    # 私网有认证请求，流式访问
+    # 私网有认证请求，流式访问，若想关闭流式访问，删除stream即可。
     curl http://{$PrivateIP}:8000/v1/chat/completions \
       -H "Content-Type: application/json" \
       -H "Authorization: Bearer ${API_KEY}" \
@@ -95,7 +97,7 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
         "stream": true
       }'
     ```
-   如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`，示例如下：
+   如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`，示例如下（deepseek-r1，如果是qwq-32b，labels.app需要改为qwq-32b)：
     ```yaml
     apiVersion: v1
     kind: Service
@@ -123,77 +125,100 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 重新部署模型，可以通过跳板机上执行kubectl apply命令或者直接在控制台手动输入模板来重新部署。
 1. 跳板机方式
    1. 进入计算巢控制台服务实例的资源界面，可以看到对应的ECS跳板机，执行**远程连接**，选择免密登录。
-      ![img.png](img.png)
+      ![resources.png](resources.png)
    2. 进入跳板机后执行命令
-      ```bash
-      kubectl apply -f /root/application.yaml
-      ```
-      可以查看对应的yaml文件/root/application.yaml，并修改部署参数后执行部署。
+        ```bash
+        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd /root
+        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# ls
+        download.log  kubectl  llm-k8s-resource  llm-k8s-resource.tar.gz  llm-model  logtail.sh  ossutil-2.1.0-linux-amd64  ossutil-2.1.0-linux-amd64.zip
+        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
+        [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
+        total 28
+        -rw-r--r-- 1  502 games 2235 Apr 14 17:54 deepseek-h20-application.yaml
+        -rw-r--r-- 1  502 games 3348 Apr 14 17:54 deepseek-ppu-application.yaml
+        -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
+        -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
+        -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
+        -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
+        -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml
+     
+        # 如果需要更改模型，直接执行apply命令即可，例如部署的是qwq32b，则执行如下命令：
+        kubectl apply -f /root/llm-k8s-resource/qwq-application.yaml
+        ```
 
-
+2. 控制台方式
+   1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
+      ![acs.png](acs.png)
+   2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
+      ![qwq-deploy.png](qwq-deploy.png)
+   3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
+      ![modify_deploy.png](modify_deploy.png)
 
 ### 进阶教程
 
-- 配置弹性扩缩容
-
-    Knative提供灵活的弹性扩缩容功能，您可以参考该文档设置对应的扩缩容配置：[基于流量请求数实现服务自动扩缩容](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/knative-auto-scaling/),
-    需要注意，目前每个pod分配了一张GPU，当通过扩容得到的pod数量超过GPU数量时将会导致其余pod扩容失败。可以创建一个弹性gpu节点池，当新创建的pod 所需要gpu资源不够，处于pending的时候，通过gpu节点池弹出来新的节点供pod使用，
-    具体参考文档：[启用节点自动伸缩](https://help.aliyun.com/zh/ack/ack-managed-and-ack-dedicated/user-guide/auto-scaling-of-nodes)。
-
 - 自定义配置Fluid实现模型加速
 
-    服务本身默认配置了Fluid，但是对于一些需要存储空间更高的模型，需要更大的缓存空间，具体可以参考文档修改Fluid的配置参数：[Fluid](https://help.aliyun.com/zh/ack/cloud-native-ai-suite/user-guide/use-jindofs-to-accelerate-access-to-oss)。
-    经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，其中fluid-oss-secret已经创建好，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：
-```yaml
-apiVersion: data.fluid.io/v1alpha1
-kind: Dataset
-metadata:
-  name: llm-model
-  namespace: llm-model
-spec:
-  mounts:
-    - mountPoint: oss://${BucketName}/llm-model/${ModelName} # 请替换为实际的模型存储地址。
-      options:
-        fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com # 请替换为实际的OSS endpoint地址。
-      name: models
-      path: "/"
-      encryptOptions:
-        - name: fs.oss.accessKeyId
-          valueFrom:
-            secretKeyRef:
-              name: fluid-oss-secret
-              key: fs.oss.accessKeyId
-        - name: fs.oss.accessKeySecret
-          valueFrom:
-            secretKeyRef:
-              name: fluid-oss-secret
-              key: fs.oss.accessKeySecret
----
-apiVersion: data.fluid.io/v1alpha1
-kind: JindoRuntime
-metadata:
-  name: llm-model # 需要与Dataset名称保持一致。
-  namespace: llm-model
-spec:
-  replicas: 3
-  tieredstore:
-    levels:
-      - mediumtype: MEM # 使用内存缓存数据。
-        volumeType: emptyDir
-        path: /dev/shm
-        quota: 10Gi # 单个分布式缓存Worker副本所能提供的缓存容量。
-        high: "0.95"
-        low: "0.7"
-  fuse:
-    resources:
-      requests:
-        memory: 2Gi
-    properties:
-      fs.oss.download.thread.concurrency: "200"
-      fs.oss.read.buffer.size: "8388608"
-      fs.oss.read.readahead.max.buffer.count: "200"
-      fs.oss.read.sequence.ambiguity.range: "2147483647"
-```
+    Fluid 是一种基于 Kubernetes 原生的分布式数据集编排和加速引擎，旨在优化数据密集型应用（如AI推理、大模型训练等场景）的性能。如果服务需要在弹性伸缩时快速启动，
+    可以考虑部署Fluid，具体可以参考文档：[Fluid](https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service)。
+    经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：
+    ```yaml
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: fluid-oss-secret
+    stringData:
+      fs.oss.accessKeyId: xxx
+      fs.oss.accessKeySecret: xxx
+    ---
+    apiVersion: data.fluid.io/v1alpha1
+    kind: Dataset
+    metadata:
+      name: llm-model
+      namespace: llm-model
+    spec:
+      mounts:
+        - mountPoint: oss://${BucketName}/llm-model/${ModelName} # 请替换为实际的模型存储地址。
+          options:
+            fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com # 请替换为实际的OSS endpoint地址。
+          name: models
+          path: "/"
+          encryptOptions:
+            - name: fs.oss.accessKeyId
+              valueFrom:
+                secretKeyRef:
+                  name: fluid-oss-secret
+                  key: fs.oss.accessKeyId
+            - name: fs.oss.accessKeySecret
+              valueFrom:
+                secretKeyRef:
+                  name: fluid-oss-secret
+                  key: fs.oss.accessKeySecret
+    ---
+    apiVersion: data.fluid.io/v1alpha1
+    kind: JindoRuntime
+    metadata:
+      name: llm-model # 需要与Dataset名称保持一致。
+      namespace: llm-model
+    spec:
+      replicas: 3
+      tieredstore:
+        levels:
+          - mediumtype: MEM # 使用内存缓存数据。
+            volumeType: emptyDir
+            path: /dev/shm
+            quota: 10Gi # 单个分布式缓存Worker副本所能提供的缓存容量。
+            high: "0.95"
+            low: "0.7"
+      fuse:
+        resources:
+          requests:
+            memory: 2Gi
+        properties:
+          fs.oss.download.thread.concurrency: "200"
+          fs.oss.read.buffer.size: "8388608"
+          fs.oss.read.readahead.max.buffer.count: "200"
+          fs.oss.read.sequence.ambiguity.range: "2147483647"
+    ```
   
 
 ### Benchmark
@@ -268,30 +293,29 @@ spec:
               name: llm-model
     ```
 2. 直接在acs控制台查看容器日志或者进入容器查看容器日志
-![img.png](console_log.png)
+   ![img.png](console_log.png)
 
-
-测试结果示例：
-```plaintext
-============ Serving Benchmark Result ============
-Successful requests:                     200       
-Benchmark duration (s):                  272.15    
-Total input tokens:                      43390     
-Total generated tokens:                  39980     
-Request throughput (req/s):              0.73      
-Output token throughput (tok/s):         146.91    
-Total Token throughput (tok/s):          306.34    
----------------Time to First Token----------------
-Mean TTFT (ms):                          246.46    
-Median TTFT (ms):                        244.58    
-P99 TTFT (ms):                           342.11    
------Time per Output Token (excl. 1st token)------
-Mean TPOT (ms):                          130.30    
-Median TPOT (ms):                        130.12    
-P99 TPOT (ms):                           139.09    
----------------Inter-token Latency----------------
-Mean ITL (ms):                           129.89    
-Median ITL (ms):                         125.40    
-P99 ITL (ms):                            173.20    
-==================================================
-```
+    测试结果示例：
+    ```plaintext
+    ============ Serving Benchmark Result ============
+    Successful requests:                     200       
+    Benchmark duration (s):                  272.15    
+    Total input tokens:                      43390     
+    Total generated tokens:                  39980     
+    Request throughput (req/s):              0.73      
+    Output token throughput (tok/s):         146.91    
+    Total Token throughput (tok/s):          306.34    
+    ---------------Time to First Token----------------
+    Mean TTFT (ms):                          246.46    
+    Median TTFT (ms):                        244.58    
+    P99 TTFT (ms):                           342.11    
+    -----Time per Output Token (excl. 1st token)------
+    Mean TPOT (ms):                          130.30    
+    Median TPOT (ms):                        130.12    
+    P99 TPOT (ms):                           139.09    
+    ---------------Inter-token Latency----------------
+    Mean ITL (ms):                           129.89    
+    Median ITL (ms):                         125.40    
+    P99 ITL (ms):                            173.20    
+    ==================================================
+    ```

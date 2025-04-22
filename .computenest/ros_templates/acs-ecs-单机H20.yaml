@@ -19,6 +19,10 @@ Conditions:
     Fn::Equals:
       - Ref: SupportPublicAccess
       - true
+  If-R1-or-QwQ-32b:
+    Fn::Or:
+      - IfDeepseek-R1
+      - IfQwQ-32b
 Parameters:
   Model:
     Type: String
@@ -37,9 +41,9 @@ Parameters:
           zh-cn: DeepSeek-R1:671b-PPU
           en: DeepSeek-R1:671b-PPU
     AllowedValues:
-      - QwQ-32b
       - DeepSeek-R1_671b_H20
       - DeepSeek-R1_671b_PPU
+      - QwQ-32b
     Default: DeepSeek-R1_671b_H20
 #  ServiceCidr:
 #    Type: String
@@ -119,42 +123,41 @@ Parameters:
 #      en: Instance Type
 #      zh-cn: 实例类型
 #    AssociationProperty: ALIYUN::ECS::Instance::InstanceType
-#  ZoneId1:
-#    Type: String
-#    Description:
-#      zh-cn: 可用区1
-#      en: ZoneId
-#    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
-#    AssociationPropertyMetadata:
-#      InstanceType: ${EcsInstanceType}
-#      ExclusiveTo:
-#        - ZoneId2
-#    Label:
-#      en: Zone ID
-#      zh-cn: 可用区1
-#  ZoneId2:
-#    Type: String
-#    Description:
-#      zh-cn: 可用区2
-#      en: ZoneId
-#    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
-#    AssociationPropertyMetadata:
-#      InstanceType: ${EcsInstanceType}
-#      ExclusiveTo:
-#        - ZoneId1
-#    Label:
-#      en: Zone ID
-#      zh-cn: 可用区2
+  ZoneId1:
+    Type: String
+    Description:
+      zh-cn: 可用区1,同时也是跳板机可用区
+      en: ZoneId
+    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+    AssociationPropertyMetadata:
+      InstanceType: ${EcsInstanceType}
+      ExclusiveTo:
+        - ZoneId2
+    Label:
+      en: Zone ID
+      zh-cn: 可用区1
+  ZoneId2:
+    Type: String
+    Description:
+      zh-cn: 可用区2
+      en: ZoneId
+    AssociationProperty: ALIYUN::ECS::Instance:ZoneId
+    AssociationPropertyMetadata:
+      InstanceType: ${EcsInstanceType}
+      ExclusiveTo:
+        - ZoneId1
+    Label:
+      en: Zone ID
+      zh-cn: 可用区2
   LoginPassword:
     NoEcho: true
     Type: String
-    Default: asdf123-
     Description:
       en: 'Length 8-32 characters, can contain size letters, Numbers and special symbols, including:! @ # $ % ^ & * ( ) _ + - ='
       zh-cn: 长度8-32个字符,可包含大小字母、数字及特殊符号（包含：!@#$%^&*()_+-=）
     Label:
       en: Instance Password
-      zh-cn: 实例密码
+      zh-cn: 跳板机实例密码
     ConstraintDescription:
       en: '8-32 characters, can contain size letters, Numbers and special symbols, including:! @ # $ % ^ & * ( ) _ + - ='
       zh-cn: 8-32个字符,可包含大小字母、数字及特殊符号（包含：!@#$%^&*()_+-=）
@@ -172,7 +175,8 @@ Resources:
       VpcId:
         Ref: EcsVpc
       CidrBlock: 192.168.0.0/24
-      ZoneId: cn-beijing-l
+      ZoneId:
+        Ref: ZoneId1
   EcsVSwitch2:
     Type: ALIYUN::ECS::VSwitch
     DependsOn: EcsVpc
@@ -180,7 +184,8 @@ Resources:
       VpcId:
         Ref: EcsVpc
       CidrBlock: 192.168.1.0/24
-      ZoneId: cn-beijing-d
+      ZoneId:
+        Ref: ZoneId2
   EcsSecurityGroup:
     Type: ALIYUN::ECS::SecurityGroup
     Properties:
@@ -247,6 +252,7 @@ Resources:
       Name:
         Ref: ALIYUN::StackName
       EndpointPublicAccess: false
+      ComputeClass: gpu
       ServiceCidr: 10.0.0.0/16
       ClusterSpec: ack.pro.small
       LoggingType: sls
@@ -257,8 +263,8 @@ Resources:
       VpcId:
         Ref: EcsVpc
       ZoneIds:
-        - cn-beijing-d
-        - cn-beijing-l
+        - Ref: ZoneId1
+        - Ref: ZoneId2
       PodVSwitchIds:
         - Ref: EcsVSwitch1
         - Ref: EcsVSwitch2
@@ -273,12 +279,16 @@ Resources:
           - - Ref: ALIYUN::StackName
             - jumpbox
       ImageId:
-        Fn::FindInMap:
-          - ModelMapping
-          - ModelImageIdMap
-          - Ref: Model
-      InstanceType: 'ecs.c7nex.8xlarge'
-      ZoneId: cn-beijing-l
+        Fn::If:
+          - If-R1-or-QwQ-32b
+          - Fn::If:
+              - IfDeepseek-R1
+              - m-deepseek_h20
+              - m-qwq_h20
+          - m-deepseek_ppu
+      InstanceType: 'ecs.c7nex.xlarge'
+      ZoneId:
+        Ref: ZoneId1
       VpcId:
         Ref: EcsVpc
       VSwitchId:
@@ -1136,7 +1146,7 @@ Resources:
                           command:
                           - sh
                           - -c
-                          - "vllm serve /llm-model/${ModelName} --port 8000 --trust-remote-code --served-model-name ${ServedModelName} --max-model-len 128000 --quantization moe_wna16 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enforce-eager"
+                          - "vllm serve /llm-model/deepseek-ai/DeepSeek-R1 --port 8000 --trust-remote-code --served-model-name ds --max-model-len 128000 --gpu-memory-utilization 0.98 --tensor-parallel-size 16 --enable-chunked-prefill --enforce-eager"
                           resources:
                             limits:
                               cpu: 176
@@ -1188,11 +1198,6 @@ Resources:
                     Fn::FindInMap:
                       - ModelMapping
                       - ServedModelNameMap
-                      - Ref: Model
-                  ModelName:
-                    Fn::FindInMap:
-                      - ModelMapping
-                      - ModelNameMap
                       - Ref: Model
                   VllmApiKey:
                     Fn::Join:
@@ -1345,7 +1350,7 @@ Mappings:
     ModelImageIdMap:
       'QwQ-32b': 'm-2ze63ac336orlspfhxnd'
       'DeepSeek-R1_671b_H20': 'm-2ze9ivr3h0xowq67fl4f'
-      'DeepSeek-R1_671b_PPU': 'm-2zed0px5v2iqq54a21d9'
+      'DeepSeek-R1_671b_PPU': 'm-2zeg4woq5yxb4njitell'
     ModelDiskSizeMap:
       'QwQ-32b': 160
       'DeepSeek-R1_671b_H20': 1500
@@ -1419,9 +1424,9 @@ Metadata:
       - Parameters:
 #          - ServiceCidr
 #          - EcsInstanceType
-#          - ZoneId1
-#          - ZoneId2
+          - ZoneId1
+          - ZoneId2
           - LoginPassword
         Label:
           en: Basic Configuration
-          zh-cn: 跳板机配置
+          zh-cn: 资源配置
