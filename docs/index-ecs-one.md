@@ -5,8 +5,12 @@
 
 本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受主流LLM（如Qwen、DeepSeek等）的推理体验。
 
-本服务提供的方案下，以平均每次请求的token为10kb计算，采用4张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数(QPS)约为13.1；采用8张A10卡的服务实例规格，QwQ-32B理论可支持的每秒并发请求数约为24.1，Deepseek-R1-70B约为9.5。
-
+本服务支持的模型如下：
+* [Qwen/QwQ-32B](https://www.modelscope.cn/models/Qwen/QwQ-32B)
+* [Qwen/Qwen2.5-32B-Instruct](https://www.modelscope.cn/models/Qwen/Qwen2.5-32B-Instruct)
+* [deepseek-ai/DeepSeek-R1-Distill-Llama-70B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Llama-70B)
+* [deepseek-ai/DeepSeek-R1-Distill-Qwen-32B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B)
+* [deepseek-ai/DeepSeek-R1-Distill-Qwen-7B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Qwen-7B)
 
 ## 整体架构
 ![arch-ecs-one.png](arch-ecs-one.png)
@@ -56,6 +60,65 @@
    ![ros-stack-2.png](ros-stack-2.png)
 2. 进入服务实例对应的资源栈，可以看到所开启的全部资源，并查看到模型部署过程中执行的全部脚本。
    ![ros-stack-ecs-one-1.png](ros-stack-ecs-one-1.png)
+   ![get-shell.png](get-shell.png)
+
+### 自定义模型部署参数
+如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。
+
+1. 远程连接，登入ECS实例。
+   ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+2. 执行下面的命令，将模型服务停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm
+3. 请参考本文档中的 查询模型部署参数 部分，获取模型部署实际执行的脚本。
+4. 下面分别是vllm与sglang部署的参考脚本，您可参考参数注释自定义模型部署参数，修改实际执行的脚本。
+* vllm部署参考脚本
+  ```shell
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name vllm \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-pytorch2.5.1-cuda12.4-ubuntu22.04 \
+   -c "pip install --upgrade vllm==0.8.2 && # 可自定义版本，如 pip install vllm==0.7.1
+   export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   vllm serve /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --gpu-memory-utilization 0.98 \ # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+   --max-model-len ${MaxModelLen} \ # 模型最大长度，取值范围与模型本身有关。
+   --enable-chunked-prefill \
+   --host=0.0.0.0 \
+   --port 8080 \
+   --trust-remote-code \
+   --api-key "${VLLM_API_KEY}" \ # 可选，如不需要可去掉。
+   --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}')" # 使用GPU数量，默认使用全部GPU。
+* sglang部署参考脚本
+  ```shell
+   #下载包含sglang的公开镜像
+   docker pull egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224
+
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name llm-server \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \ 
+   -c "pip install sglang==0.4.3 && # 可自定义版本
+   export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   python3 -m sglang.launch_server \
+   --model-path /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --tp $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}')" \ # 使用GPU数量，默认使用全部GPU。
+   --trust-remote-code \
+   --host 0.0.0.0 \
+   --port 8080 \
+   --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+
 
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
@@ -112,10 +175,20 @@
 ![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)
 
 ### 压测过程(供参考)
->**前提条件：** 1. 无法直接测试带api-key的模型服务，需要修改benchmark_serving.py使其允许传入api-key；2. 需要公网。
-
-以QwQ-32B为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。
-
+>**前提条件：** 1. 无法直接测试带api-key的模型服务；2. 需要公网。
+#### 重新部署模型服务
+1. 远程连接，登入ECS实例。
+   ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+2. 执行下面的命令，将模型服务停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm
+3. 请参考本文档中的 查询模型部署参数 部分，获取模型部署实际执行的脚本。
+4. 去掉脚本中的--api-key参数，在ECS实例中执行剩余脚本。执行docker logs vllm。若结果如下图所示，则模型服务重新部署成功。
+    ![deployed.png](deployed.png)
+#### 进行性能测试
+以QwQ-32B为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。可根据参数说明自行修改。
+   ```shell
     yum install -y git-lfs
     git lfs install
     git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
@@ -127,11 +200,11 @@
     --backend vllm \
     --model /root/llm-model/Qwen/QwQ-32B \
     --served-model-name Qwen/QwQ-32B \
-    --sonnet-input-len 1024 \
-    --sonnet-output-len 6 \
-    --sonnet-prefix-len 50 \
-    --num-prompts 400 \
-    --request-rate 20 \
+    --sonnet-input-len 1024 \ # 最大输入长度
+    --sonnet-output-len 4096 \ # 最大输出长度
+    --sonnet-prefix-len 50 \ # 前缀长度
+    --num-prompts 400 \ # 从数据集中随机选取或按顺序处理 400 个 prompt 进行性能测试。
+    --request-rate 20 \ # 模拟每秒 20 个并发请求的压力测试，持续20秒，共400个请求。评估模型服务在负载下的吞吐量和延迟。
     --port 8080 \
     --trust-remote-code \
     --dataset-name sharegpt \

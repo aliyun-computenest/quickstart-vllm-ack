@@ -7,6 +7,9 @@
 
 本服务提供的方案下，以平均每次请求的token为10kb计算，采用两台H20规格的ECS实例，DeepSeek-R1满血版理论可支持的每秒并发请求数(QPS)约为75，DeepSeek-V3约为67。
 
+本服务支持的模型如下：
+* [deepseek-ai/DeepSeek-R1](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1)
+* [deepseek-ai/DeepSeek-V3](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-V3)
 
 ## 整体架构
 ![arch-ecs-two.png](arch-ecs-two.png)
@@ -56,6 +59,135 @@
     ![ros-stack-2.png](ros-stack-2.png)
 2. 进入服务实例对应的资源栈，可以看到所开启的全部资源，并查看到模型部署过程中执行的全部脚本。
     ![ros-stack-3.png](ros-stack-3.png)
+    ![get-shell.png](get-shell.png)
+
+### 自定义模型部署参数
+如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。
+
+当前提供vllm和sglang两种部署方式，vllm部署只需改动worker节点脚本即可，sglang部署需改动master和worker节点脚本。
+
+1. 远程连接，分别登入master节点和worker节点(两台实例分别命名为llm-xxxx-master和llm-xxxx-worker)。
+   ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+2. 执行下面的命令，将两个节点内的模型服务都停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm
+3. 请参考本文档中的 查询模型部署参数 部分，获取master节点和worker节点中模型部署实际执行的脚本。
+4. 下面分别是vllm与sglang部署的参考脚本，您可参考参数注释自定义模型部署参数，修改实际执行的脚本。修改后，先执行master节点脚本，成功后，再执行worker节点脚本即可。
+* vllm部署master节点参考脚本
+    ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 && # 可自定义版本，如 pip install vllm==0.7.1。必须与worker节点保持一致。
+    export NCCL_IB_DISABLE=0 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    ray start --head --dashboard-host 0.0.0.0 --port=6379 && 
+    tail -f /dev/null"
+* vllm部署worker节点参考脚本
+  ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 && # 可自定义版本，如 pip install vllm==0.7.1。必须与master节点保持一致。
+    export NCCL_IB_DISABLE=0 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    ray start --address='${HEAD_NODE_ADDRESS}:6379' && # 填写master节点的内网IP地址。
+    vllm serve /root/llm-model/${ModelName} \ 
+    --served-model-name ${ModelName} \
+    --gpu-memory-utilization 0.98 \  # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+    --max-model-len ${MaxModelLen} \ # 模型最大长度，取值范围与模型本身有关。
+    --enable-chunked-prefill \
+    --host=0.0.0.0 \
+    --port 8080 \
+    --trust-remote-code \
+    --api-key "${VLLM_API_KEY}" \
+    --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}') \ # 单节点使用GPU数量，默认使用单台ECS实例的全部GPU。
+    --pipeline-parallel-size 2" # 流线并行数，推荐设置为节点总数。
+* sglang部署master节点参考脚本
+  ```shell
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name llm-server \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \ 
+   -c "pip install sglang==0.4.3 && # 可自定义版本，必须与worker节点保持一致
+    export NCCL_IB_DISABLE=0 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   python3 -m sglang.launch_server \
+   --model-path /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --tp 16 \ # 当前sglang不支持流线并行，默认使用两台ECS实例中全部GPU。
+   --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # 填写master节点的内网IP地址。
+   --nnodes 2 # 节点总算，默认使用两台ECS实例。
+   --node-rank 0 # 节点序号，默认为0。
+   --trust-remote-code \
+   --host 0.0.0.0 \
+   --port 8080 \
+   --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+* sglang部署worker节点参考脚本
+  ```shell
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name llm-server \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \ 
+   -c "pip install sglang==0.4.3 && # 可自定义版本，必须与master节点保持一致
+    export NCCL_IB_DISABLE=0 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 && # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 && # 采用vpc进行网络通信所需环境变量，勿删改
+   python3 -m sglang.launch_server \
+   --model-path /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --tp 16 \ # 当前sglang不支持流线并行，默认使用两台ECS实例中全部GPU。
+   --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # 填写master节点的内网IP地址。
+   --nnodes 2 # 节点总算，默认使用两台ECS实例。
+   --node-rank 1 # 节点序号，默认为1。
+   --trust-remote-code \
+   --host 0.0.0.0 \
+   --port 8080 \
+   --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
 
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
@@ -100,10 +232,20 @@
 ![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
 
 ### 压测过程(供参考)
->**前提条件：** 1. 无法直接测试带api-key的模型服务，需要修改benchmark_serving.py使其允许传入api-key；2. 需要公网。
-
-以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。
-    
+>**前提条件：** 1. 无法直接测试带api-key的模型服务；2. 需要公网。
+#### 重新部署模型服务
+1. 远程连接，登入worker节点（命名为llm-xxxx-worker）。
+   ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+2. 执行下面的命令，将模型服务停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm
+3. 请参考本文档中的 查询模型部署参数 部分，获取worker节点模型部署实际执行的脚本。
+4. 去掉脚本中的--api-key参数，在ECS实例中执行剩余脚本。执行docker logs vllm。若结果如下图所示，则模型服务重新部署成功。
+    ![deployed.png](deployed.png)
+#### 进行性能测试
+以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。可根据参数说明自行修改。
+   ```shell
     yum install -y git-lfs
     git lfs install
     git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
@@ -115,11 +257,11 @@
     --backend vllm \
     --model /root/llm-model/deepseek-ai/DeepSeek-R1 \
     --served-model-name deepseek-ai/DeepSeek-R1 \
-    --sonnet-input-len 1024 \
-    --sonnet-output-len 6 \
-    --sonnet-prefix-len 50 \
-    --num-prompts 1500 \
-    --request-rate 75 \
+    --sonnet-input-len 1024 \ # 最大输入长度
+    --sonnet-output-len 4096 \ # 最大输出长度
+    --sonnet-prefix-len 50 \ # 前缀长度
+    --num-prompts 400 \ # 从数据集中随机选取或按顺序处理 400 个 prompt 进行性能测试。
+    --request-rate 20 \ # 模拟每秒 20 个并发请求的压力测试，持续20秒，共400个请求。评估模型服务在负载下的吞吐量和延迟。
     --port 8080 \
     --trust-remote-code \
     --dataset-name sharegpt \
