@@ -62,11 +62,9 @@
     ![get-shell.png](get-shell.png)
 
 ### 自定义模型部署参数
-如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。
+如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。当前提供vllm和sglang两种部署方式。
 
-当前提供vllm和sglang两种部署方式，vllm部署只需改动worker节点脚本即可，sglang部署需改动master和worker节点脚本。
-
-1. 远程连接，分别登入master节点和worker节点(两台实例分别命名为llm-xxxx-master和llm-xxxx-worker)。
+1. 远程连接，分别登入master节点和worker节点（两台实例分别命名为llm-xxxx-master和llm-xxxx-worker）。
    ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
 2. 执行下面的命令，将两个节点内的模型服务都停止。
     ```shell
@@ -188,6 +186,7 @@
    --host 0.0.0.0 \
    --port 8080 \
    --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+
 
 ### 内网API访问
 复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
