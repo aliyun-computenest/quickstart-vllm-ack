@@ -65,7 +65,7 @@
 如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。当前提供vllm和sglang两种部署方式。
 
 1. 远程连接，分别登入master节点和worker节点（两台实例分别命名为llm-xxxx-master和llm-xxxx-worker）。
-   ![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+    ![private-ip-ecs-two-1.png](private-ip-ecs-two-1.png)
 2. 执行下面的命令，将两个节点内的模型服务都停止。
     ```shell
     sudo docker stop vllm
