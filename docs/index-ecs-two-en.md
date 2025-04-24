@@ -12,7 +12,18 @@ The models supported by this service are as follows:
 * [deepseek-ai/DeepSeek-V3](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-V3)
 
 ## Overall architecture
-![arch-ecs-two.png](arch-ecs-two.png)
+
+### User/Client Layer
+* Access Method：VPC Internal Access, Public Network Access and API Key Access
+* Response Method: Streaming Return
+
+### Service Layer
+* Large Model Service: Provide Standard API Interface for Invocation
+* VLLM Service: Tensor Parallel Size 8 and Pipeline Parallel Size 2
+
+### Infrastructure Layer
+* Network and Resources: Ray Cluster, Dual ECS GPU Instances, ECS Image and VPC Network
+* ECS Image: VLLM Standard Operation Environment and Large Model Files
 
 ## Billing instructions
 The cost of this service on Alibaba Cloud mainly involves:
@@ -37,14 +48,14 @@ To deploy service instances, some Alibaba Cloud resources need to be accessed an
 ## Deployment Process
 
 1. Click [Deployment Link] (https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM Inference Service (ECS Version)).Select the dual-machine version and confirm that the H20 example specification has been applied for.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
-![deploy-ecs-two-1.png](deploy-ecs-two-1.png)
-![deploy-ecs-one-2.png](deploy-ecs-one-2.png)
+![deploy-ecs-two-1.png](png-en%2Fdeploy-ecs-two-1.png)
+![deploy-ecs-two-2.png](png-en%2Fdeploy-ecs-two-2.png)
 2. Click **Next: Confirm the order ** and you can see the price preview. Then you can click **Deploy now** and wait for the deployment to complete.(If the RAM permission is insufficient, you need to add RAM permissions to the sub-account)
-![price-ecs-two.png](price-ecs-two.png)
+![price-ecs-two.png](png-en%2Fprice-ecs-two.png)
 3. After the deployment is completed, you can start using the service.Click on the service instance name to enter the service instance details, and use the Api to call the sample to access the service.If it is an intranet access, you must ensure that the ECS instance is under the same VPC.
-![deploying-ecs-two.png](deploying-ecs-two.png)
-![result-ecs-two-1.png](result-ecs-two-1.png)
-![result-ecs-two-2.png](result-ecs-two-2.png)
+![deploying-ecs-one.png](png-en%2Fdeploying-ecs-one.png)
+![result-ecs-one-1.png](png-en%2Fresult-ecs-one-1.png)
+![result-ecs-one-2.png](png-en%2Fresult-ecs-one-2.png)
 4. After ssh accesses the ECS instance, execute docker logs vllm to query the model service deployment log.When you see the result shown in the figure below, it means that the model service is deployed successfully.The path where the model is located is /root/llm_model/.
 ![deployed.png](deployed.png)
 
@@ -53,17 +64,17 @@ To deploy service instances, some Alibaba Cloud resources need to be accessed an
 ### Query model deployment parameters
 
 1. Copy the service instance name.Go to [Resource Orchestration Console] (https://ros.console.aliyun.com/cn-hangzhou/stacks) to view the corresponding resource stack.
-![ros-stack-1.png](ros-stack-1.png)
-![ros-stack-2.png](ros-stack-2.png)
+![ros-stack-1.png](png-en%2Fros-stack-1.png)
+![ros-stack-2.png](png-en%2Fros-stack-2.png)
 2. Enter the resource stack corresponding to the service instance, you can see all the resources opened and view all the scripts executed during the model deployment process.
-![ros-stack-3.png](ros-stack-3.png)
-![get-shell.png](get-shell.png)
+![ros-stack-ecs-two.png](png-en%2Fros-stack-ecs-two.png)
+![get-shell.png](png-en%2Fget-shell.png)
 
 ### Customize model deployment parameters
 If you have the requirement for custom model deployment parameters, you can modify it after deploying the service instance as follows.Currently, two deployment methods are provided: vllm and sglang.
 
 1. Remote connection, log in to the master node and the worker node respectively (the two instances are named llm-xxxx-master and llm-xxxx-worker respectively).
-![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+![private-ip-ecs-two-1.png](png-en%2Fprivate-ip-ecs-two-1.png)
 
 2. Execute the following command to stop the model services in both nodes.
     ```shell
@@ -193,20 +204,20 @@ If you have the requirement for custom model deployment parameters, you can modi
 
 ### Intranet API access
 Copy the Api call example and paste the Api call example in the ECS instance of the resource tab.It can also be accessed in other ECS within the same VPC.
-![result-ecs-two-2.png](result-ecs-two-2.png)
-![private-ip-ecs-two-1.png](private-ip-ecs-two-1.png)
-![private-ip-ecs-two-2.png](private-ip-ecs-two-2.png)
+![result-ecs-one-2.png](png-en%2Fresult-ecs-one-2.png)
+![private-ip-ecs-two-1.png](png-en%2Fprivate-ip-ecs-two-1.png)
+![private-ip-ecs-one-2.png](png-en%2Fprivate-ip-ecs-one-2.png)
 ### Public Internet API access
 Copy the Api call example and paste the Api call example in the local terminal.
-![result-ecs-two-2.png](result-ecs-two-2.png)
-![public-ip-ecs-two-1.png](public-ip-ecs-two-1.png)
+![result-ecs-one-2.png](png-en%2Fresult-ecs-one-2.png)
+![public-ip-ecs-one-1.png](png-en%2Fpublic-ip-ecs-one-1.png)
 
 ## Configure the vLLM API using the Chatbox client for conversation (optional)
 
 1. Visit Chatbox [Download Address] (https://chatboxai.app/zh#download) to download and install the client. This solution takes macOS M3 as an example.
-![install-chatbox-1.png](install-chatbox-1.png)
+![install-chatbox-1.png](png-en%2Finstall-chatbox-1.png)
 2. Run and configure the vLLM API and click Settings.
-![install-chatbox-2.png](install-chatbox-2.png)
+![install-chatbox-2.png](png-en%2Finstall-chatbox-2.png)
 3. Configure in the pop-up kanban according to the following table.
 
 | Project | Description | Example Value |
@@ -220,7 +231,6 @@ Copy the Api call example and paste the Api call example in the local terminal.
 | Model | Fill in the called model.| deepseek-ai/DeepSeek-R1 |
 
 4. Save the configuration.The conversation can be performed in the text input box.Enter the question Who are you?Or after other instructions, the model service is called to obtain the corresponding response.
-![install-chatbox-3.png](install-chatbox-3.png)
 
 ## Performance Testing
 Under this service plan, the inference response performance of the model service with a QPS of 75 and 60 was tested respectively for Deepseek-R1 and V3, and the pressure measurement duration was 20s.
@@ -237,7 +247,7 @@ Under this service plan, the inference response performance of the model service
 >**Prerequisites: ** 1. It is impossible to directly test model services with API-key; 2. Public network is required.
 #### Redeploy the model service
 1. Remote connection and log in to the worker node (named llm-xxxx-worker).
-![private-ip-ecs-one-1.png](private-ip-ecs-one-1.png)
+![private-ip-ecs-two-1.png](png-en%2Fprivate-ip-ecs-two-1.png)
 2. Execute the following command to stop the model service.
     ```shell
     sudo docker stop vllm
