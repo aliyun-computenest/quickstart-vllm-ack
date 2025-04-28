@@ -325,10 +325,7 @@ This service uses VLLM's built-in benchmark tool for testing. The test dataset i
             - mountPath: /llm-model
               name: llm-model
     ```
-2. View logs in the ACK console or directly in the container:
-   ![console_log.png](console_log.png)
-
-### Sample Benchmark Results
+2. View logs in the ACK console or directly in the container, this is a Sample Benchmark Results:
 ```plaintext
 =========== Serving Benchmark Result ============
 Successful requests:                     200       
