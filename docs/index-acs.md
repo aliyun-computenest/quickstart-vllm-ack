@@ -10,6 +10,8 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 
 本服务在部署时支持不同的模型和GPU型号，包括：
 * QwQ32B
+* DeepSeek-R1-Distill-Qwen-32B，GPU：PPU
+* DeepSeek-R1-Distill-Llama-70B，GPU：PPU
 * Deepseek满血版（671B，fp8），GPU：H20
 * Deepseek满血版（671B，fp8），GPU：PPU
 
@@ -156,68 +158,83 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 
 ### 进阶教程
 
-- 自定义配置Fluid实现模型加速
+- 除了部署服务实例时可以选择**Fluid配置**，也可以后续自定义配置Fluid实现模型加速
 
     Fluid 是一种基于 Kubernetes 原生的分布式数据集编排和加速引擎，旨在优化数据密集型应用（如AI推理、大模型训练等场景）的性能。如果服务需要在弹性伸缩时快速启动，
     可以考虑部署Fluid，具体可以参考文档：[Fluid](https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service)。
     经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：
     ```yaml
-    apiVersion: v1
-    kind: Secret
-    metadata:
-      name: fluid-oss-secret
-    stringData:
-      fs.oss.accessKeyId: xxx
-      fs.oss.accessKeySecret: xxx
-    ---
     apiVersion: data.fluid.io/v1alpha1
     kind: Dataset
     metadata:
       name: llm-model
       namespace: llm-model
     spec:
+      placement: Shared
       mounts:
-        - mountPoint: oss://${BucketName}/llm-model/${ModelName} # 请替换为实际的模型存储地址。
+        - mountPoint: oss://${BucketName}/llm-model
           options:
-            fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com # 请替换为实际的OSS endpoint地址。
+            fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com
           name: models
           path: "/"
           encryptOptions:
             - name: fs.oss.accessKeyId
               valueFrom:
                 secretKeyRef:
-                  name: fluid-oss-secret
-                  key: fs.oss.accessKeyId
+                  name: oss-secret
+                  key: akId
             - name: fs.oss.accessKeySecret
               valueFrom:
                 secretKeyRef:
-                  name: fluid-oss-secret
-                  key: fs.oss.accessKeySecret
+                  name: oss-secret
+                  key: akSecret
     ---
     apiVersion: data.fluid.io/v1alpha1
     kind: JindoRuntime
     metadata:
-      name: llm-model # 需要与Dataset名称保持一致。
+      name: llm-model
       namespace: llm-model
     spec:
-      replicas: 3
-      tieredstore:
-        levels:
-          - mediumtype: MEM # 使用内存缓存数据。
-            volumeType: emptyDir
-            path: /dev/shm
-            quota: 10Gi # 单个分布式缓存Worker副本所能提供的缓存容量。
-            high: "0.95"
-            low: "0.7"
-      fuse:
+      networkmode: ContainerNetwork
+      replicas: ${JindoRuntimeReplicas} # 设置副本数,根据实际的模型磁盘占用进行设置
+      master:
+        podMetadata:
+          labels:
+            alibabacloud.com/compute-class: performance
+            alibabacloud.com/compute-qos: default
+      worker:
+        podMetadata:
+          labels:
+            alibabacloud.com/compute-class: performance
+            alibabacloud.com/compute-qos: default
+          annotations:
+            kubernetes.io/resource-type: serverless
         resources:
           requests:
-            memory: 2Gi
-        properties:
-          fs.oss.download.thread.concurrency: "200"
-          fs.oss.read.buffer.size: "8388608"
-          fs.oss.read.readahead.max.buffer.count: "200"
-          fs.oss.read.sequence.ambiguity.range: "2147483647"
+            cpu: 16
+            memory: 128Gi
+          limits:
+            cpu: 16
+            memory: 128Gi
+      tieredstore:
+        levels:
+          - mediumtype: MEM
+            path: /dev/shm
+            volumeType: emptyDir
+            quota: 128Gi
+            high: "0.99"
+            low: "0.95"
+    ---
+    apiVersion: data.fluid.io/v1alpha1
+    kind: DataLoad
+    metadata:
+      name: llm-model
+      namespace: llm-model
+    spec:
+      dataset:
+        name: llm-model
+        namespace: llm-model
+      loadMetadata: true
     ```
   
 
