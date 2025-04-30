@@ -215,9 +215,9 @@
 ![qps20-8a10-qwen3-32b.png](qps20-8a10-qwen3-32b.png)
 
 ###### QPS为50，1分钟3000个问答请求
+![qps50-8a10-qwen3-32b.png](qps50-8a10-qwen3-32b.png)
 
 #### QwQ-32B压测结果
-![qps50-8a10-qwen3-32b.png](qps50-8a10-qwen3-32b.png)
 
 本服务方案下，针对QwQ-32B在4*A10和8*A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。
 
