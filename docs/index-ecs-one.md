@@ -8,6 +8,7 @@
 本服务支持的模型如下：
 * [Qwen/Qwen3-235B-A22B](https://www.modelscope.cn/models/Qwen/Qwen3-235B-A22B/)
 * [Qwen/Qwen3-32B](https://www.modelscope.cn/models/Qwen/Qwen3-32B)
+* [Qwen/Qwen3-8B](https://www.modelscope.cn/models/Qwen/Qwen3-8B)
 * [Qwen/QwQ-32B](https://www.modelscope.cn/models/Qwen/QwQ-32B)
 * [Qwen/Qwen2.5-32B-Instruct](https://www.modelscope.cn/models/Qwen/Qwen2.5-32B-Instruct)
 * [deepseek-ai/DeepSeek-R1-Distill-Llama-70B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Llama-70B)
