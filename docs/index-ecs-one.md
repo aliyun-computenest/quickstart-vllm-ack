@@ -1,11 +1,13 @@
 # 基于单ECS实例的LLM模型部署文档
 
 ## 部署说明
-本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，10分钟即可部署使用QwQ-32B模型，15分钟即可部署使用Deepseek-R1-70B模型。
+本服务提供了基于ECS镜像与VLLM的大模型一键部署方案，10分钟即可部署使用QwQ-32B模型，30分钟即可部署使用Qwen3-235B-A22B模型。
 
 本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受主流LLM（如Qwen、DeepSeek等）的推理体验。
 
 本服务支持的模型如下：
+* [Qwen/Qwen3-235B-A22B](https://www.modelscope.cn/models/Qwen/Qwen3-235B-A22B/)
+* [Qwen/Qwen3-32B](https://www.modelscope.cn/models/Qwen/Qwen3-32B)
 * [Qwen/QwQ-32B](https://www.modelscope.cn/models/Qwen/QwQ-32B)
 * [Qwen/Qwen2.5-32B-Instruct](https://www.modelscope.cn/models/Qwen/Qwen2.5-32B-Instruct)
 * [deepseek-ai/DeepSeek-R1-Distill-Llama-70B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Llama-70B)
@@ -152,27 +154,6 @@
     ![install-chatbox-3.png](install-chatbox-3.png)
 
 ## 性能测试
-本服务方案下，针对QwQ-32B在4*A10和8*A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。
-
-### 8*A10规格
-#### QPS为10
-![img.png](qps10-8a10-ecs-one.png)
-
-#### QPS为20
-![qps20-8a10-ecs-one.png](qps20-8a10-ecs-one.png)
-
-#### QPS为50
-![qps50-8a10-ecs-one.png](qps50-8a10-ecs-one.png)
-
-### 4*A10规格
-#### QPS为10
-![qps10-4a10-ecs-one.png](qps10-4a10-ecs-one.png)
-
-#### QPS为20
-![qps20-4a10-ecs-one.png](qps20-4a10-ecs-one.png)
-
-#### QPS为50
-![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)
 
 ### 压测过程(供参考)
 >**前提条件：** 1. 无法直接测试带api-key的模型服务；2. 需要公网。
@@ -185,7 +166,7 @@
     sudo docker rm vllm
 3. 请参考本文档中的 查询模型部署参数 部分，获取模型部署实际执行的脚本。
 4. 去掉脚本中的--api-key参数，在ECS实例中执行剩余脚本。执行docker logs vllm。若结果如下图所示，则模型服务重新部署成功。
-    ![deployed.png](deployed.png)
+   ![deployed.png](deployed.png)
 #### 进行性能测试
 以QwQ-32B为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。可根据参数说明自行修改。
    ```shell
@@ -211,3 +192,51 @@
     --save-result \
     --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
     "
+   ```
+### 性能测试结果
+
+#### Qwen3-235B-A22B压测结果
+
+本服务方案下，针对Qwen3-235B-A22B在ecs.ebmgn8v.48xlarge（H20）实例规格下，分别测试QPS为20情况下模型服务的推理响应性能，压测持续时间均为1分钟。
+
+##### H20规格
+###### QPS为20，1分钟1200个问答请求
+![qps20-h20-qwen3-235b.png](qps20-h20-qwen3-235b.png)
+
+###### QPS为50，1分钟3000个问答请求
+![qps50-h20-qwen3-235b.png](qps50-h20-qwen3-235b.png)
+
+#### Qwen3-32B压测结果
+
+本服务方案下，针对Qwen3-32B在ecs.gn7i-8x.16xlarge（8*A10）实例规格下，分别测试QPS为20情况下模型服务的推理响应性能，压测持续时间均为1分钟。
+
+##### 8*A10规格
+###### QPS为20，1分钟1200个问答请求
+![qps20-8a10-qwen3-32b.png](qps20-8a10-qwen3-32b.png)
+
+###### QPS为50，1分钟3000个问答请求
+
+#### QwQ-32B压测结果
+![qps50-8a10-qwen3-32b.png](qps50-8a10-qwen3-32b.png)
+
+本服务方案下，针对QwQ-32B在4*A10和8*A10实例规格下，分别测试QPS为10、20、50情况下模型服务的推理响应性能，压测持续时间均为20s。
+
+##### 8*A10规格
+###### QPS为10
+![img.png](qps10-8a10-ecs-one.png)
+
+###### QPS为20
+![qps20-8a10-ecs-one.png](qps20-8a10-ecs-one.png)
+
+###### QPS为50
+![qps50-8a10-ecs-one.png](qps50-8a10-ecs-one.png)
+
+##### 4*A10规格
+###### QPS为10
+![qps10-4a10-ecs-one.png](qps10-4a10-ecs-one.png)
+
+###### QPS为20
+![qps20-4a10-ecs-one.png](qps20-4a10-ecs-one.png)
+
+###### QPS为50
+![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)

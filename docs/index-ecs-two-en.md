@@ -233,28 +233,19 @@ Copy the Api call example and paste the Api call example in the local terminal.
 4. Save the configuration.The conversation can be performed in the text input box.Enter the question Who are you?Or after other instructions, the model service is called to obtain the corresponding response.
 
 ## Performance Testing
-Under this service plan, the inference response performance of the model service with a QPS of 75 and 60 was tested respectively for Deepseek-R1 and V3, and the pressure measurement duration was 20s.
-
-### Deepseek-R1
-#### QPS is 75
-![qps75-r1-ecs-two.png](qps75-r1-ecs-two.png)
-
-### Deepseek-V3
-#### QPS is 60
-![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
 
 ### Pressure test process (for reference)
 >**Prerequisites: ** 1. It is impossible to directly test model services with API-key; 2. Public network is required.
 #### Redeploy the model service
 1. Remote connection and log in to the worker node (named llm-xxxx-worker).
-![private-ip-ecs-two-1.png](png-en%2Fprivate-ip-ecs-two-1.png)
+   ![private-ip-ecs-two-1.png](png-en%2Fprivate-ip-ecs-two-1.png)
 2. Execute the following command to stop the model service.
     ```shell
     sudo docker stop vllm
     sudo docker rm vllm
 3. Please refer to the Query Model Deployment Parameters section in this document to obtain the scripts that the worker node model deployment actually executes.
 4. Remove the --api-key parameter in the script and execute the remaining scripts in the ECS instance.Execute docker logs vllm.If the result is shown in the figure below, the model service is redeployed successfully.
-![deployed.png](deployed.png)
+   ![deployed.png](deployed.png)
 #### Perform performance testing
 Taking Deepseek-R1 as an example, after the model service is deployed, ssh logs into the ECS instance.Execute the following command to get the model service performance test results.You can modify it yourself according to the parameter description.
    ```shell
@@ -280,3 +271,16 @@ Taking Deepseek-R1 as an example, after the model service is deployed, ssh logs 
     --save-result \
     --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
     "
+   ```
+
+### Model service performance test
+
+Under this service plan, the inference response performance of the model service with a QPS of 75 and 60 was tested respectively for Deepseek-R1 and V3, and the pressure measurement duration was 20s.
+
+#### Deepseek-R1
+##### QPS is 75
+![qps75-r1-ecs-two.png](qps75-r1-ecs-two.png)
+
+#### Deepseek-V3
+##### QPS is 60
+![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)

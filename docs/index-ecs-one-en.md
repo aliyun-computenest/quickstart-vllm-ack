@@ -1,11 +1,13 @@
 # LLM model deployment document based on single ECS instance
 
 ## Deployment Instructions
-This service provides a one-click deployment solution for large models based on ECS mirroring and VLLM. The QwQ-32B model can be deployed in 10 minutes and the Deepseek-R1-70B model can be deployed in 15 minutes.
+This service provides a one-click deployment solution for large models based on ECS mirroring and VLLM. The QwQ-32B model can be deployed in 10 minutes and the Qwen3-235B-A22B model can be deployed in 30 minutes.
 
 This service uses ECS mirror packaging standard environments and realizes one-click deployment of cloud resources and large models through Ros templates. Developers do not need to care about the standard environment for model deployment and operation and the underlying cloud resource orchestration. They only need to add a few parameters to enjoy the inference experience of mainstream LLMs (such as Qwen, DeepSeek, etc.).
 
 The models supported by this service are as follows:
+* [Qwen/Qwen3-235B-A22B](https://www.modelscope.cn/models/Qwen/Qwen3-235B-A22B/)
+* [Qwen/Qwen3-32B](https://www.modelscope.cn/models/Qwen/Qwen3-32B)
 * [Qwen/QwQ-32B](https://www.modelscope.cn/models/Qwen/QwQ-32B)
 * [Qwen/Qwen2.5-32B-Instruct](https://www.modelscope.cn/models/Qwen/Qwen2.5-32B-Instruct)
 * [deepseek-ai/DeepSeek-R1-Distill-Llama-70B](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1-Distill-Llama-70B)
@@ -161,40 +163,19 @@ Copy the Api call example and paste the Api call example in the local terminal.
 4. Save the configuration.The conversation can be performed in the text input box.Enter the question Who are you?Or after other instructions, the model service is called to obtain the corresponding response.
 
 ## Performance Testing
-Under this service plan, the inference response performance of the model service under the 4*A10 and 8*A10 instance specifications were tested respectively for the inference response performance of the model service with a QPS of 10, 20 and 50, and the pressure measurement duration was 20s.
-
-### 8*A10 specifications
-#### QPS is 10
-![img.png](qps10-8a10-ecs-one.png)
-
-#### QPS is 20
-![qps20-8a10-ecs-one.png](qps20-8a10-ecs-one.png)
-
-#### QPS is 50
-![qps50-8a10-ecs-one.png](qps50-8a10-ecs-one.png)
-
-### 4*A10 specifications
-#### QPS is 10
-![qps10-4a10-ecs-one.png](qps10-4a10-ecs-one.png)
-
-#### QPS is 20
-![qps20-4a10-ecs-one.png](qps20-4a10-ecs-one.png)
-
-#### QPS is 50
-![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)
 
 ### Pressure test process (for reference)
 >**Prerequisites: ** 1. It is impossible to directly test model services with API-key; 2. Public network is required.
 #### Redeploy the model service
 1. Remotely connect and log in to the ECS instance.
-![private-ip-ecs-one-1.png](png-en%2Fprivate-ip-ecs-one-1.png)
+   ![private-ip-ecs-one-1.png](png-en%2Fprivate-ip-ecs-one-1.png)
 2. Execute the following command to stop the model service.
     ```shell
     sudo docker stop vllm
     sudo docker rm vllm
 3. Please refer to the Query Model Deployment Parameters section in this document to obtain the scripts that the model deployment actually executes.
 4. Remove the --api-key parameter in the script and execute the remaining scripts in the ECS instance.Execute docker logs vllm.If the result is shown in the figure below, the model service is redeployed successfully.
-![deployed.png](deployed.png)
+   ![deployed.png](deployed.png)
 #### Perform performance testing
 Taking QwQ-32B as an example, after the model service is deployed, ssh logs into the ECS instance.Execute the following command to get the model service performance test results.You can modify it yourself according to the parameter description.
    ```shell
@@ -220,3 +201,48 @@ Taking QwQ-32B as an example, after the model service is deployed, ssh logs into
     --save-result \
     --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
     "
+   ```
+
+#### Qwen3-235B-A22B stress test results
+
+Under this service plan, for Qwen3-235B-A22B, the inference response performance of the model service was tested under the ecs.ebmgn8v.48xlarge (H20) instance specification with a QPS of 20, and the stress test duration was 1 minute.
+
+##### H20 specification
+###### QPS is 20, 1200 question and answer requests in 1 minute
+![qps20-h20-qwen3-235b.png](qps20-h20-qwen3-235b.png)
+
+###### QPS is 50, 3000 Q&A requests per minute
+![qps50-h20-qwen3-235b.png](qps50-h20-qwen3-235b.png)
+
+#### Qwen3-32B stress test results
+
+Under this service plan, for Qwen3-32B, the inference response performance of the model service is tested under the ecs.gn7i-8x.16xlarge (8*A10) and ecs.ebmgn8v.48xlarge (H20) instance specifications, respectively, with a QPS of 20. The stress test duration is 1 minute.
+
+##### 8*A10 specification
+###### QPS is 20, 1200 Q&A requests per minute
+![img_1.png](qps20-8a10-qwen3-32b.png)
+
+###### QPS is 50, 3000 Q&A requests per minute
+![qps50-8a10-qwen3-32b.png](qps50-8a10-qwen3-32b.png)
+
+Under this service plan, the inference response performance of the model service under the 4*A10 and 8*A10 instance specifications were tested respectively for the inference response performance of the model service with a QPS of 10, 20 and 50, and the pressure measurement duration was 20s.
+
+### 8*A10 specifications
+#### QPS is 10
+![img.png](qps10-8a10-ecs-one.png)
+
+#### QPS is 20
+![qps20-8a10-ecs-one.png](qps20-8a10-ecs-one.png)
+
+#### QPS is 50
+![qps50-8a10-ecs-one.png](qps50-8a10-ecs-one.png)
+
+### 4*A10 specifications
+#### QPS is 10
+![qps10-4a10-ecs-one.png](qps10-4a10-ecs-one.png)
+
+#### QPS is 20
+![qps20-4a10-ecs-one.png](qps20-4a10-ecs-one.png)
+
+#### QPS is 50
+![qps50-4a10-ecs-one.png](qps50-4a10-ecs-one.png)

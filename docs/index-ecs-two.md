@@ -220,15 +220,6 @@
    ![install-chatbox-3.png](install-chatbox-3.png)
 
 ## 性能测试
-本服务方案下，针对Deepseek-R1和V3，分别测试QPS为75和60情况下模型服务的推理响应性能，压测持续时间均为20s。
-
-### Deepseek-R1
-#### QPS为75
-![qps75-r1-ecs-two.png](qps75-r1-ecs-two.png)
-
-### Deepseek-V3
-#### QPS为60
-![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
 
 ### 压测过程(供参考)
 >**前提条件：** 1. 无法直接测试带api-key的模型服务；2. 需要公网。
@@ -241,7 +232,7 @@
     sudo docker rm vllm
 3. 请参考本文档中的 查询模型部署参数 部分，获取worker节点模型部署实际执行的脚本。
 4. 去掉脚本中的--api-key参数，在ECS实例中执行剩余脚本。执行docker logs vllm。若结果如下图所示，则模型服务重新部署成功。
-    ![deployed.png](deployed.png)
+   ![deployed.png](deployed.png)
 #### 进行性能测试
 以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。可根据参数说明自行修改。
    ```shell
@@ -267,3 +258,16 @@
     --save-result \
     --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
     "
+   ```
+
+### 性能测试结果
+
+本服务方案下，针对Deepseek-R1和V3，分别测试QPS为75和60情况下模型服务的推理响应性能，压测持续时间均为20s。
+
+#### Deepseek-R1
+##### QPS为75
+![qps75-r1-ecs-two.png](qps75-r1-ecs-two.png)
+
+#### Deepseek-V3
+##### QPS为60
+![qps60-v3-ecs-two.png](qps60-v3-ecs-two.png)
