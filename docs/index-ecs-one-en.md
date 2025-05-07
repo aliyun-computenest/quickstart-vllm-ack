@@ -51,7 +51,7 @@ To deploy service instances, some Alibaba Cloud resources need to be accessed an
 
 ## Deployment Process
 
-1. Click [Deployment Link] (https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM Inference Service (ECS Version)).Select standalone version.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
+1. Click [[Deployment Link]](https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&ServiceId=service-0326350f111e4230a9c9).Select standalone version.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
 ![deploy-ecs-one-1.png](png-en%2Fdeploy-ecs-one-1.png)
 ![deploy-ecs-one-2.png](png-en%2Fdeploy-ecs-one-2.png)
 ![deploy-ecs-one-3.png](png-en%2Fdeploy-ecs-one-3.png)
