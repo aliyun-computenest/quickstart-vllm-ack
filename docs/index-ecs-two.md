@@ -38,7 +38,7 @@
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM推理服务(ECS版))。选择双机版，并确认已申请H20实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-fcfc1ea4afaf47bcbadc)。选择双机版，并确认已申请H20实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy-ecs-two-1.png](deploy-ecs-two-1.png)
     ![deploy-ecs-one-2.png](deploy-ecs-one-2.png)
 2. 点击**下一步：确认订单**后可以看到价格预览，随后可点击**立即部署**，等待部署完成。(提示RAM权限不足时需要为子账号添加RAM权限)
