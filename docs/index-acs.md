@@ -1,6 +1,7 @@
 # 基于ACK集群的vllm大模型部署文档
 
 ## 部署说明
+
 本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，基于以下核心组件：
 
 VLLM：提供高性能并行推理能力，支持低延迟、高吞吐的LLM（如Qwen、DeepSeek等）推理。
@@ -9,27 +10,29 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 部署后，用户可通过私有/公网API调用模型服务，资源利用率提升数倍，开发者无需关注底层容器编排与资源调度，仅需在计算巢控制台页面选择模型即可完成一键部署。
 
 本服务在部署时支持不同的模型和GPU型号，包括：
+
 * QwQ32B
 * DeepSeek-R1-Distill-Qwen-32B，GPU：PPU
 * DeepSeek-R1-Distill-Llama-70B，GPU：PPU
 * Deepseek满血版（671B，fp8），GPU：H20
 * Deepseek满血版（671B，fp8），GPU：PPU
 
-
 ## 整体架构
+
 ![arch.png](arch.png)
 
-
 ## 计费说明
+
 本服务在阿里云上的费用主要涉及：
+
 * ACS费用
 * 跳板机ECS费用
-  * 说明：该ECS用于部署和管理K8S集群，/root目录中保存了部署所用到的K8S Yaml资源文件，后期需要修改了参数重新部署可以直接在该基础上修改后重新执行kubectl apply。
-    部署完成如不需要也可自行释放。
+    * 说明：该ECS用于部署和管理K8S集群，/root目录中保存了部署所用到的K8S Yaml资源文件，后期需要修改了参数重新部署可以直接在该基础上修改后重新执行kubectl
+      apply。
+      部署完成如不需要也可自行释放。
 * OSS费用
-计费方式：按量付费（小时）或包年包月
-预估费用在创建实例时可实时看到。
-
+  计费方式：按量付费（小时）或包年包月
+  预估费用在创建实例时可实时看到。
 
 ## RAM账号所需权限
 
@@ -48,18 +51,22 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
-    ![deploy.png](deploy.png)
+1.
+
+单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)
+。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
+![deploy.png](deploy.png)
 
 2. 点击**下一步：确认订单**后可以也看到价格预览，随后点击**立即部署**，等待部署完成。
-    ![price.png](price.png)
+   ![price.png](price.png)
 
 3. 等待部署完成后就可以开始使用服务，进入服务实例详情查看如何私网访问指导。如果选择了**支持公网访问**，则能看到公网访问指导。
-    ![result.png](result.png)
+   ![result.png](result.png)
 
 ## 使用说明
 
 ### 私网API访问
+
 1. 在和服务器同一VPC内的ECS中访问概览页的**私网API地址**。访问示例如下：
     ```shell
     # 私网有认证请求，流式访问，若想关闭流式访问，删除stream即可。
@@ -99,7 +106,8 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
         "stream": true
       }'
     ```
-   如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`，示例如下（deepseek-r1，如果是qwq-32b，labels.app需要改为qwq-32b)：
+   如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`
+   ，示例如下（deepseek-r1，如果是qwq-32b，labels.app需要改为qwq-32b)：
     ```yaml
     apiVersion: v1
     kind: Service
@@ -124,45 +132,47 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
     ```
 
 ### 重新部署模型
+
 重新部署模型，可以通过跳板机上执行kubectl apply命令或者直接在控制台手动输入模板来重新部署。
+
 1. 跳板机方式
-   1. 进入计算巢控制台服务实例的资源界面，可以看到对应的ECS跳板机，执行**远程连接**，选择免密登录。
-      ![resources.png](resources.png)
-   2. 进入跳板机后执行命令
-        ```bash
-        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd /root
-        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# ls
-        download.log  kubectl  llm-k8s-resource  llm-k8s-resource.tar.gz  llm-model  logtail.sh  ossutil-2.1.0-linux-amd64  ossutil-2.1.0-linux-amd64.zip
-        [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
-        [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
-        total 28
-        -rw-r--r-- 1  502 games 2235 Apr 14 17:54 deepseek-h20-application.yaml
-        -rw-r--r-- 1  502 games 3348 Apr 14 17:54 deepseek-ppu-application.yaml
-        -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
-        -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
-        -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
-        -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
-        -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml
-     
-        # 如果需要更改模型，直接执行apply命令即可，例如部署的是qwq32b，则执行如下命令：
-        kubectl apply -f /root/llm-k8s-resource/qwq-application.yaml
-        ```
+    1. 进入计算巢控制台服务实例的资源界面，可以看到对应的ECS跳板机，执行**远程连接**，选择免密登录。
+       ![resources.png](resources.png)
+    2. 进入跳板机后执行命令
+         ```bash
+         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd /root
+         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# ls
+         download.log  kubectl  llm-k8s-resource  llm-k8s-resource.tar.gz  llm-model  logtail.sh  ossutil-2.1.0-linux-amd64  ossutil-2.1.0-linux-amd64.zip
+         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
+         [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
+         total 28
+         -rw-r--r-- 1  502 games 2235 Apr 14 17:54 deepseek-h20-application.yaml
+         -rw-r--r-- 1  502 games 3348 Apr 14 17:54 deepseek-ppu-application.yaml
+         -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
+         -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
+         -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
+         -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
+         -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml
+      
+         # 如果需要更改模型，直接执行apply命令即可，例如部署的是qwq32b，则执行如下命令：
+         kubectl apply -f /root/llm-k8s-resource/qwq-application.yaml
+         ```
 
 2. 控制台方式
-   1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
-      ![acs.png](acs.png)
-   2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
-      ![qwq-deploy.png](qwq-deploy.png)
-   3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
-      ![modify_deploy.png](modify_deploy.png)
+    1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
+       ![acs.png](acs.png)
+    2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
+       ![qwq-deploy.png](qwq-deploy.png)
+    3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
+       ![modify_deploy.png](modify_deploy.png)
 
 ### 进阶教程
 
 - 除了部署服务实例时可以选择**Fluid配置**，也可以后续自定义配置Fluid实现模型加速
 
-    Fluid 是一种基于 Kubernetes 原生的分布式数据集编排和加速引擎，旨在优化数据密集型应用（如AI推理、大模型训练等场景）的性能。如果服务需要在弹性伸缩时快速启动，
-    可以考虑部署Fluid，具体可以参考文档：[Fluid](https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service)。
-    经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：
+  Fluid 是一种基于 Kubernetes 原生的分布式数据集编排和加速引擎，旨在优化数据密集型应用（如AI推理、大模型训练等场景）的性能。如果服务需要在弹性伸缩时快速启动，
+  可以考虑部署Fluid，具体可以参考文档：[Fluid](https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service)。
+  经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：
     ```yaml
     apiVersion: data.fluid.io/v1alpha1
     kind: Dataset
@@ -236,20 +246,23 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
         namespace: llm-model
       loadMetadata: true
     ```
-  
 
 ### Benchmark
 
 本服务基采用vllm自带的benchmark进行测试，采用的压测数据集：[https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files](https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files)，
 整体压测流程：
+
 1. 创建一个Deployment，使用vllm-benchmark镜像。在容器中执行数据集下载、压测操作
-    ```shell
-    # 获取运行deepseek-r1的pod的ip
-    kubectl get pod -n llm-model -l app=deepseek-r1 -o jsonpath='{.items[0].status.podIP}'
-    ```
-    ```yaml
-    # 用上面获取到的pod ip替换下面yaml中的$POD_IP
-    # $API_KEY需要替换为实际的API_KEY，实际的API_KEY可以在服务实例详情页看到
+   使用下面的yaml创建Deployment前需要替换部分参数
+
+    | 替换参数                     | 参数含义                    | 参数值示例/说明                                                                                                                                                                                                                                                                                                                                          |
+    |--------------------------|-------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+    | **`$POD_IP`**            | 运行 deepseek-r1 的 Pod IP | `kubectl get pod -n llm-model -l app=$(kubectl get deployment -n llm-model -l app -o jsonpath='{.items[0].spec.template.metadata.labels.app}') -o jsonpath='{.items[0].status.podIP}'`                                                                                                                                                            |
+    | **`$API_KEY`**           | 服务认证密钥                  | 在服务实例详情页中获取（形如 `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`）                                                                                                                                                                                                                                                                                             |
+    | **`$MODEL_PATH`**        | 模型存储路径                  | QwQ-32b: `/llm-model/Qwen/QwQ-32B`<br>Qwen3-32b: `/llm-model/Qwen/Qwen3-32B`<br>Qwen3-235b-A22b: `/llm-model/Qwen/Qwen3-235B-A22B`<br>DeepSeek-R1_671b: `/llm-model/deepseek-ai/DeepSeek-R1`<br>DeepSeek-R1_32b: `/llm-model/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B`<br>DeepSeek-R1_70b: `/llm-model/deepseek-ai/DeepSeek-R1-Distill-Llama-70B` |
+    | **`$SERVED_MODEL_NAME`** | 服务部署的模型名称               | QwQ-32b: `qwq-32b`<br>Qwen3-32b: `qwen3`<br>Qwen3-235b-A22b: `qwen3`<br>DeepSeek-R1_671b: `deepseek-r1`<br>DeepSeek-R1_32b: `deepseek-r1`<br>DeepSeek-R1_70b: `deepseek-r1`                                                                                                                                                                       |
+
+    ```yaml 
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -290,8 +303,8 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
               export OPENAI_API_KEY=$API_KEY
               python3 /root/vllm/benchmarks/benchmark_serving.py \
                 --backend vllm \
-                --model /llm-model/deepseek-ai/DeepSeek-R1 \
-                --served-model-name ds \
+                --model $MODEL_PATH \
+                --served-model-name $SERVED_MODEL_NAME \
                 --trust-remote-code \
                 --dataset-name sharegpt \
                 --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json \
@@ -311,10 +324,11 @@ ACS集群：提供托管的Kubernetes环境，支持Serverless工作负载。
             - mountPath: /llm-model
               name: llm-model
     ```
+
 2. 直接在acs控制台查看容器日志或者进入容器查看容器日志
    ![img.png](console_log.png)
 
-    测试结果示例：
+   测试结果示例：
     ```plaintext
     ============ Serving Benchmark Result ============
     Successful requests:                     200       
