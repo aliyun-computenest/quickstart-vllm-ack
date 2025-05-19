@@ -51,7 +51,7 @@ The account deploying the instance requires permissions to access and manage Ali
 
 ## Deployment Steps
 
-1. Click the **[Deployment Link](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1(ACS%E7%89%88))**. Follow the interface prompts to fill in parameters and view cost estimates. Confirm parameters and click **Next: Confirm Order**.
+1. Click the **[Deployment Link](https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)**. Follow the interface prompts to fill in parameters and view cost estimates. Confirm parameters and click **Next: Confirm Order**.
    ![deploy.png](deploy.png)
 
 2. Click **Next: Confirm Order** to preview costs. Then click **Deploy Now** and wait for completion.
@@ -265,6 +265,7 @@ This service uses VLLM's built-in benchmark tool for testing. The test dataset i
     ```
     ```yaml
     # Replace $POD_IP with the obtained IP
+    # Replace $API_KEY with your API key, which can be obtained from the ComputeNest console ServiceInstance detail.
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -302,6 +303,7 @@ This service uses VLLM's built-in benchmark tool for testing. The test dataset i
               git clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git /root/ShareGPT_V3_unfiltered_cleaned_split
 
               # Run the benchmark
+              export OPENAI_API_KEY=$API_KEY
               python3 /root/vllm/benchmarks/benchmark_serving.py \
                 --backend vllm \
                 --model /llm-model/deepseek-ai/DeepSeek-R1 \
