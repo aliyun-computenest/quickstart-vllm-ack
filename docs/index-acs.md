@@ -207,6 +207,7 @@ spec:
     ```
     ```yaml
     # 用上面获取到的pod ip替换下面yaml中的$POD_IP
+    # $API_KEY需要替换为实际的API_KEY，实际的API_KEY可以在服务实例详情页看到
     apiVersion: apps/v1
     kind: Deployment
     metadata:
@@ -243,6 +244,7 @@ spec:
               # 下载数据集
               git clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git /root/ShareGPT_V3_unfiltered_cleaned_split
               
+              export OPENAI_API_KEY=$API_KEY
               # 执行基准测试
               python3 /root/vllm/benchmarks/benchmark_serving.py \
                 --backend vllm \
