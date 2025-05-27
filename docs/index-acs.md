@@ -136,7 +136,9 @@ spec:
 
 ### 重新部署模型
 
-重新部署模型，可以通过跳板机上执行kubectl apply命令或者直接在控制台手动输入模板来重新部署。
+**对于不更换模型、仅改变部署参数的情况，可以参考如下说明重新部署模型：**
+
+通过跳板机上执行kubectl apply命令或者直接在控制台手动输入模板来重新部署。
 
 1. 跳板机方式
     1. 进入计算巢控制台服务实例的资源界面，可以看到对应的ECS跳板机，执行**远程连接**，选择免密登录。
@@ -157,8 +159,8 @@ spec:
          -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
          -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml
       
-         # 如果需要更改模型，直接执行apply命令即可，例如部署的是qwq32b，则执行如下命令：
-         kubectl apply -f /root/llm-k8s-resource/qwq-application.yaml
+         # 如果需要更改模型参数，修改了model.yaml后直接执行apply命令即可
+         kubectl apply -f /root/llm-k8s-resource/model.yaml
          ```
 
 2. 控制台方式
@@ -168,6 +170,11 @@ spec:
        ![qwq-deploy.png](qwq-deploy.png)
     3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
        ![modify_deploy.png](modify_deploy.png)
+
+**对于更换模型的情况，可以参考如下文档：**
+
+[ACS集群形态的LLM大模型推理镜像使用指导_PG1阿里云产品-阿里云帮助中心](https://help.aliyun.com/document_detail/2864595.html)
+[使用ACS GPU算力构建DeepSeek满血版模型推理服务_容器计算服务(ACS)-阿里云帮助中心](https://help.aliyun.com/zh/cs/user-guide/use-acs-gpu-computing-power-to-build-deepseek-full-model-reasoning-service)
 
 ### 进阶教程
 
