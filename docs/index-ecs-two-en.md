@@ -138,7 +138,7 @@ If you have the requirement for custom model deployment parameters, you can modi
     --max-model-len ${MaxModelLen} \ # The maximum length of the model, the value range is related to the model itself.
     --enable-chunked-prefill \
     --host=0.0.0.0 \
-    --port 8080 \
+    --port 8000 \
     --trust-remote-code \
     --api-key "${VLLM_API_KEY}" \
     --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}') \ # The number of GPUs used by a single node, and the default is to use all GPUs of a single ECS instance.
@@ -170,7 +170,7 @@ If you have the requirement for custom model deployment parameters, you can modi
     --node-rank 0 # Node sequence number, default is 0.
     --trust-remote-code \
     --host 0.0.0.0 \
-    --port 8080 \
+    --port 8000 \
     --mem-fraction-static 0.9 # Gpu occupancy rate, too high may cause other processes to trigger OOM.Value range: 0~1
 
 * sglang deployment worker node reference script
@@ -199,7 +199,7 @@ If you have the requirement for custom model deployment parameters, you can modi
     --node-rank 1 # Node number, default is 1.
     --trust-remote-code \
     --host 0.0.0.0 \
-    --port 8080 \
+    --port 8000 \
     --mem-fraction-static 0.9 # Gpu occupancy rate, too high may cause other processes to trigger OOM.Value range: 0~1
 
 ### Intranet API access
@@ -265,7 +265,7 @@ Taking Deepseek-R1 as an example, after the model service is deployed, ssh logs 
     --sonnet-prefix-len 50 \ # Prefix length
     --num-prompts 400 \ # Randomly select or process 400 prompts from the dataset for performance testing.
     --request-rate 20 \ # Simulate a stress test of 20 concurrent requests per second, lasting 20 seconds, with a total of 400 requests.Evaluate the throughput and latency of the model service under load.
-    --port 8080 \
+    --port 8000 \
     --trust-remote-code \
     --dataset-name sharegpt \
     --save-result \

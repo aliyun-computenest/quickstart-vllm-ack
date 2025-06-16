@@ -94,7 +94,7 @@
    --max-model-len ${MaxModelLen} \ # 模型最大长度，取值范围与模型本身有关。
    --enable-chunked-prefill \
    --host=0.0.0.0 \
-   --port 8080 \
+   --port 8000 \
    --trust-remote-code \
    --api-key "${VLLM_API_KEY}" \ # 可选，如不需要可去掉。
    --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}')" # 使用GPU数量，默认使用全部GPU。
@@ -119,7 +119,7 @@
    --tp $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}')" \ # 使用GPU数量，默认使用全部GPU。
    --trust-remote-code \
    --host 0.0.0.0 \
-   --port 8080 \
+   --port 8000 \
    --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
 
 
@@ -187,7 +187,7 @@
     --sonnet-prefix-len 50 \ # 前缀长度
     --num-prompts 400 \ # 从数据集中随机选取或按顺序处理 400 个 prompt 进行性能测试。
     --request-rate 20 \ # 模拟每秒 20 个并发请求的压力测试，持续20秒，共400个请求。评估模型服务在负载下的吞吐量和延迟。
-    --port 8080 \
+    --port 8000 \
     --trust-remote-code \
     --dataset-name sharegpt \
     --save-result \
