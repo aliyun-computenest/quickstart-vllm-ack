@@ -134,7 +134,23 @@ spec:
   type: LoadBalancer
 ```
 
-### 重新部署模型
+### 快速更换模型、GPU规格、Pod数量
+
+**计算巢支持实例变配功能，可以一键更换模型、GPU规格、Pod数量，具体参考如下说明：**
+
+服务实例部署完成后，进入服务实例详情页面，点击右上角的**修改配置**按钮，选择需要修改的参数，修改后可以查看价格和变配前后的参数变化，最后点击**确认**。（变配GPU前请确保原所选地域与可用区有库存）
+![update_instance_1.png](update_instacne_1.png)
+
+![update_instance_2.png](update_instance_2.png)
+
+![update_instance_3.png](update_instance_3.png)
+
+![update_instance_4.png](update_instance_4.png)
+
+实例状态由**变配中**变为**已成功**表示变配成功。
+![update_instance_5.png](update_instance_5.png)
+
+### 手动重新部署模型
 
 **对于不更换模型、仅改变部署参数的情况，可以参考如下说明重新部署模型：**
 
