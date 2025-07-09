@@ -6,7 +6,7 @@
 
 - **vLLM**：提供高性能并行推理能力，支持低延迟、高吞吐的LLM推理（支持Qwen、DeepSeek全系列模型）
 - **ACS集群**：提供全托管的Kubernetes环境，支持Serverless工作负载弹性伸缩
-- **PPU/H20 GPU加速**：支持多种算力规格，满足不同模型规模的推理需求
+- **P16EN/GU8TF GPU加速**：支持多种算力规格，满足不同模型规模的推理需求
 
 部署后，用户可通过私有/公网API调用模型服务，资源利用率提升数倍，开发者无需关注底层容器编排与资源调度，仅需在计算巢控制台页面选择模型即可完成一键部署。
 
@@ -14,12 +14,12 @@
 
 | 模型系列             | 支持GPU类型        | 可选数量范围          |
 |------------------|----------------|-----------------|
-| QwQ-32b          | H20            | 1/2/4/8         |
-| Qwen3-32b        | H20/PPU        | 1/2/4/8/16（PPU） |
-| Qwen3-235b-A22b  | H20/PPU        | 8/16（PPU）       |
-| DeepSeek-R1-32b  | H20/H20-3e/PPU | 1/2/4/8/16（PPU） |
-| DeepSeek-R1-70b  | H20/H20-3e/PPU | 2/4/8/16（PPU）   |
-| DeepSeek-R1-671b | H20/H20-3e/PPU | 8/16（PPU）       |
+| QwQ-32b          | GU8TF            | 1/2/4/8         |
+| Qwen3-32b        | GU8TF/P16EN        | 1/2/4/8/16（P16EN） |
+| Qwen3-235b-A22b  | GU8TF/P16EN        | 8/16（P16EN）       |
+| DeepSeek-R1-32b  | GU8TF/GU8TEF/P16EN | 1/2/4/8/16（P16EN） |
+| DeepSeek-R1-70b  | GU8TF/GU8TEF/P16EN | 2/4/8/16（P16EN）   |
+| DeepSeek-R1-671b | GU8TF/GU8TEF/P16EN | 8/16（P16EN）       |
 
 ## 整体架构
 
@@ -29,7 +29,7 @@
 
 | 资源类型   | 计费模式 | 关键配置说明                                     |
 |--------|------|--------------------------------------------|
-| ACS集群  | 按量付费 | 根据所选GPU类型和数量计费，H20/H20-3e/PPU规格不同价格不同      |
+| ACS集群  | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同      |
 | ECS跳板机 | 按量付费 | ecs.u1-c1m2.xlarge（4C8G），用于集群管理，部署完成后可安全释放 |
 | OSS存储  | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                     |
 | NAT网关  | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                    |
@@ -167,8 +167,6 @@ spec:
          [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
          [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
          total 28
-         -rw-r--r-- 1  502 games 2235 Apr 14 17:54 deepseek-h20-application.yaml
-         -rw-r--r-- 1  502 games 3348 Apr 14 17:54 deepseek-ppu-application.yaml
          -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
          -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
          -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml

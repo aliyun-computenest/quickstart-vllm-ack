@@ -16,10 +16,10 @@ on the ComputeNest console is required for one-click deployment.
 The service supports various models and GPU types during deployment, including:
 
 - **QwQ32B**
-- **DeepSeek-R1-Distill-Qwen-32B**, GPU: PPU
-- **DeepSeek-R1-Distill-Llama-70B**, GPU: PPU
-- **Deepseek Full-Blooded Version (671B, fp8)**, GPU: H20
-- **Deepseek Full-Blooded Version (671B, fp8)**, GPU: PPU
+- **DeepSeek-R1-Distill-Qwen-32B**, GPU: P16EN
+- **DeepSeek-R1-Distill-Llama-70B**, GPU: P16EN
+- **Deepseek Full-Blooded Version (671B, fp8)**, GPU: GU8TF
+- **Deepseek Full-Blooded Version (671B, fp8)**, GPU: P16EN
 
 ---
 
@@ -171,8 +171,6 @@ Models can be re-deployed using `kubectl apply` on the jump server or by manuall
     [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
     [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
     total 28
-    -rw-r--r-- 1  502 games 2235 Apr 14 17:54 deepseek-h20-application.yaml
-    -rw-r--r-- 1  502 games 3348 Apr 14 17:54 deepseek-ppu-application.yaml
     -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
     -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
     -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
