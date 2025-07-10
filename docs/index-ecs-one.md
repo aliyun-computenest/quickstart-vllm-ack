@@ -202,10 +202,10 @@
 
 ##### GU8TF规格
 ###### QPS为20，1分钟1200个问答请求
-![qps20-h20-qwen3-235b.png](qps20-h20-qwen3-235b.png)
+![qps20-GU8TF-qwen3-235b.png](qps20-GU8TF-qwen3-235b.png)
 
 ###### QPS为50，1分钟3000个问答请求
-![qps50-h20-qwen3-235b.png](qps50-h20-qwen3-235b.png)
+![qps50-GU8TF-qwen3-235b.png](qps50-GU8TF-qwen3-235b.png)
 
 #### Qwen3-32B压测结果
 

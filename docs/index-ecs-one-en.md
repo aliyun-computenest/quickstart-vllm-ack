@@ -210,10 +210,10 @@ Under this service plan, for Qwen3-235B-A22B, the inference response performance
 
 ##### GU8TF specification
 ###### QPS is 20, 1200 question and answer requests in 1 minute
-![qps20-h20-qwen3-235b.png](qps20-h20-qwen3-235b.png)
+![qps20-GU8TF-qwen3-235b.png](qps20-GU8TF-qwen3-235b.png)
 
 ###### QPS is 50, 3000 Q&A requests per minute
-![qps50-h20-qwen3-235b.png](qps50-h20-qwen3-235b.png)
+![qps50-GU8TF-qwen3-235b.png](qps50-GU8TF-qwen3-235b.png)
 
 #### Qwen3-32B stress test results
 
