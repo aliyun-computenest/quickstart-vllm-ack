@@ -5,7 +5,7 @@ This service provides a one-click deployment solution for large models based on 
 
 This service uses ECS mirror packaging standard environments and realizes one-click deployment of cloud resources and large models through Ros templates. Developers do not need to care about the standard environment for model deployment and operation and the underlying cloud resource orchestration. They only need to add a few parameters to enjoy the inference experience of DeepSeek-R1 full-blooded version and DeepSeek-V3.
 
-Under the scheme provided by this service, the average token per request is calculated by 10kb, and two H20-specification ECS instances can be used. The number of concurrent requests per second (QPS) that can be supported by the DeepSeek-R1 full-blood version theory is about 75, and the DeepSeek-V3 is about 67.
+Under the scheme provided by this service, the average token per request is calculated by 10kb, and two GU8TF-specification ECS instances can be used. The number of concurrent requests per second (QPS) that can be supported by the DeepSeek-R1 full-blood version theory is about 75, and the DeepSeek-V3 is about 67.
 
 The models supported by this service are as follows:
 * [deepseek-ai/DeepSeek-R1](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1)
@@ -47,7 +47,7 @@ To deploy service instances, some Alibaba Cloud resources need to be accessed an
 
 ## Deployment Process
 
-1. Click [[Deployment Link]](https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&ServiceId=service-0326350f111e4230a9c9).Select the dual-machine version and confirm that the H20 example specification has been applied for.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
+1. Click [[Deployment Link]](https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&ServiceId=service-0326350f111e4230a9c9).Select the dual-machine version and confirm that the GU8TF example specification has been applied for.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
 ![deploy-ecs-two-1.png](png-en%2Fdeploy-ecs-two-1.png)
 ![deploy-ecs-two-2.png](png-en%2Fdeploy-ecs-two-2.png)
 2. Click **Next: Confirm the order ** and you can see the price preview. Then you can click **Deploy now** and wait for the deployment to complete.(If the RAM permission is insufficient, you need to add RAM permissions to the sub-account)

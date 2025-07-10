@@ -5,7 +5,7 @@
 
 本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受DeepSeek-R1满血版和DeepSeek-V3的推理体验。
 
-本服务提供的方案下，以平均每次请求的token为10kb计算，采用两台H20规格的ECS实例，DeepSeek-R1满血版理论可支持的每秒并发请求数(QPS)约为75，DeepSeek-V3约为67。
+本服务提供的方案下，以平均每次请求的token为10kb计算，采用两台GU8TF规格的ECS实例，DeepSeek-R1满血版理论可支持的每秒并发请求数(QPS)约为75，DeepSeek-V3约为67。
 
 本服务支持的模型如下：
 * [deepseek-ai/DeepSeek-R1](https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1)
@@ -38,7 +38,7 @@
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-fcfc1ea4afaf47bcbadc)。选择双机版，并确认已申请H20实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-fcfc1ea4afaf47bcbadc)。选择双机版，并确认已申请GU8TF实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy-ecs-two-1.png](deploy-ecs-two-1.png)
     ![deploy-ecs-one-2.png](deploy-ecs-one-2.png)
 2. 点击**下一步：确认订单**后可以看到价格预览，随后可点击**立即部署**，等待部署完成。(提示RAM权限不足时需要为子账号添加RAM权限)
