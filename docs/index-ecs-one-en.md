@@ -206,9 +206,9 @@ Taking QwQ-32B as an example, after the model service is deployed, ssh logs into
 
 #### Qwen3-235B-A22B stress test results
 
-Under this service plan, for Qwen3-235B-A22B, the inference response performance of the model service was tested under the ecs.ebmgn8v.48xlarge (H20) instance specification with a QPS of 20, and the stress test duration was 1 minute.
+Under this service plan, for Qwen3-235B-A22B, the inference response performance of the model service was tested under the GU8TF instance specification with a QPS of 20, and the stress test duration was 1 minute.
 
-##### H20 specification
+##### GU8TF specification
 ###### QPS is 20, 1200 question and answer requests in 1 minute
 ![qps20-h20-qwen3-235b.png](qps20-h20-qwen3-235b.png)
 
@@ -217,7 +217,7 @@ Under this service plan, for Qwen3-235B-A22B, the inference response performance
 
 #### Qwen3-32B stress test results
 
-Under this service plan, for Qwen3-32B, the inference response performance of the model service is tested under the ecs.gn7i-8x.16xlarge (8*A10) and ecs.ebmgn8v.48xlarge (H20) instance specifications, respectively, with a QPS of 20. The stress test duration is 1 minute.
+Under this service plan, for Qwen3-32B, the inference response performance of the model service is tested under the ecs.gn7i-8x.16xlarge (8*A10) and GU8TF instance specifications, respectively, with a QPS of 20. The stress test duration is 1 minute.
 
 ##### 8*A10 specification
 ###### QPS is 20, 1200 Q&A requests per minute
