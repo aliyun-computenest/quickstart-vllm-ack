@@ -1,25 +1,19 @@
-# 基于ACS集群的vllm大模型部署文档
+# 基于ACS集群的大模型部署文档
 
 ## 部署说明
 
-本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，基于以下核心组件：
+本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，支持以下场景：
+- **新建ACS集群**：用户可以选择直接创建一个ACS集群，计算巢会在用户账号下一键创建ACS集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+- **选择已有ACS、ACK集群**：用户可以选择使用已有的ACS或者ACK集群，计算巢会在用户账号下创建OSS Bucket（也可以选择已有的Bucket），完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+
+本方案基于以下核心组件：
 
 - **vLLM**：提供高性能并行推理能力，支持低延迟、高吞吐的LLM推理（支持Qwen、DeepSeek全系列模型）
+- **SGLang**: SGLang 是一个适用于大语言模型和视觉语言模型的快速服务框架。
 - **ACS集群**：提供全托管的Kubernetes环境，支持Serverless工作负载弹性伸缩
 - **P16EN/GU8TF GPU加速**：支持多种算力规格，满足不同模型规模的推理需求
 
 部署后，用户可通过私有/公网API调用模型服务，资源利用率提升数倍，开发者无需关注底层容器编排与资源调度，仅需在计算巢控制台页面选择模型即可完成一键部署。
-
-### 支持模型清单
-
-| 模型系列             | 支持GPU类型        | 可选数量范围          |
-|------------------|----------------|-----------------|
-| QwQ-32b          | GU8TF            | 1/2/4/8         |
-| Qwen3-32b        | GU8TF/P16EN        | 1/2/4/8/16（P16EN） |
-| Qwen3-235b-A22b  | GU8TF/P16EN        | 8/16（P16EN）       |
-| DeepSeek-R1-32b  | GU8TF/GU8TEF/P16EN | 1/2/4/8/16（P16EN） |
-| DeepSeek-R1-70b  | GU8TF/GU8TEF/P16EN | 2/4/8/16（P16EN）   |
-| DeepSeek-R1-671b | GU8TF/GU8TEF/P16EN | 8/16（P16EN）       |
 
 ## 整体架构
 
@@ -55,6 +49,8 @@
 1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)
 。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy.png](deploy.png)
+    这里也可以选择已有ACS集群,如下所示：
+    ![deploy_existing_cluster.png](deploy_existing_cluster.png)
 
 2. 点击**下一步：确认订单**后可以也看到价格预览，随后点击**立即部署**，等待部署完成。
    ![price.png](price.png)
@@ -89,7 +85,8 @@ curl http://{$PrivateIP}:8000/v1/chat/completions \
   }'
 ```
 
-2. 如果想通过公网访问API地址，部署时如果选择了**支持公网访问**，则直接通过公网IP访问即可，示例如下：
+### 公网API访问
+1. 如果想通过公网访问API地址，部署时如果选择了**支持公网访问**，则直接通过公网IP访问即可，示例如下：
 ```shell
 curl http://${PublicIp}:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
@@ -108,7 +105,7 @@ curl http://${PublicIp}:8000/v1/chat/completions \
     "stream": true
   }'
 ```
-如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`
+2. 如果未选择**支持公网访问**，则需要手动在集群中创建一个`LoadBalance`
 ，示例如下（deepseek-r1，如果是qwq-32b，labels.app需要改为qwq-32b)：
 
 ```yaml
@@ -161,20 +158,9 @@ spec:
        ![resources.png](resources.png)
     2. 进入跳板机后执行命令
          ```bash
-         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd /root
-         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# ls
-         download.log  kubectl  llm-k8s-resource  llm-k8s-resource.tar.gz  llm-model  logtail.sh  ossutil-2.1.0-linux-amd64  ossutil-2.1.0-linux-amd64.zip
-         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
-         [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
-         total 28
-         -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
-         -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
-         -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
-         -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
-         -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml
-      
+         [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# vi /model.yaml 
          # 如果需要更改模型参数，修改了model.yaml后直接执行apply命令即可
-         kubectl apply -f /root/llm-k8s-resource/model.yaml
+         kubectl apply -f /model.yaml
          ```
 
 2. 控制台方式
@@ -285,7 +271,7 @@ spec:
 | **`$POD_IP`**            | 运行 deepseek-r1 的 Pod IP | `kubectl get pod -n llm-model -l app=$(kubectl get deployment -n llm-model -l app -o jsonpath='{.items[0].spec.template.metadata.labels.app}') -o jsonpath='{.items[0].status.podIP}'`                                                                                                                                                            |
 | **`$API_KEY`**           | 服务认证密钥                  | 在服务实例详情页中获取（形如 `sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx`）                                                                                                                                                                                                                                                                                             |
 | **`$MODEL_PATH`**        | 模型存储路径                  | QwQ-32b: `/llm-model/Qwen/QwQ-32B`<br>Qwen3-32b: `/llm-model/Qwen/Qwen3-32B`<br>Qwen3-235b-A22b: `/llm-model/Qwen/Qwen3-235B-A22B`<br>DeepSeek-R1_671b: `/llm-model/deepseek-ai/DeepSeek-R1`<br>DeepSeek-R1_32b: `/llm-model/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B`<br>DeepSeek-R1_70b: `/llm-model/deepseek-ai/DeepSeek-R1-Distill-Llama-70B` |
-| **`$SERVED_MODEL_NAME`** | 服务部署的模型名称               | QwQ-32b: `qwq-32b`<br>Qwen3-32b: `qwen3`<br>Qwen3-235b-A22b: `qwen3`<br>DeepSeek-R1_671b: `deepseek-r1`<br>DeepSeek-R1_32b: `deepseek-r1`<br>DeepSeek-R1_70b: `deepseek-r1`                                                                                                                                                                       |
+| **`$SERVED_MODEL_NAME`** | 服务部署的模型名称               | QwQ-32b: `Qwen/QwQ-32B`<br>Qwen3-32b: `Qwen/Qwen3-32B`<br>Qwen3-235b-A22b: `Qwen/Qwen3-235B-A22B`<br>DeepSeek-R1_671b: `deepseek-ai/DeepSeek-R1`<br>DeepSeek-R1_32b: `deepseek-ai/DeepSeek-R1-Distill-Qwen-32B`<br>DeepSeek-R1_70b: `deepseek-ai/DeepSeek-R1-Distill-Llama-70B`                                                                                                                                                                       |
 
 ```yaml 
 apiVersion: apps/v1
