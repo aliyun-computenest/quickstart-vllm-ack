@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>DeepSeek-R1 and V3 model deployment documents based on dual ECS instances - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#deepseek-r1-and-v3-model-deployment-documents-based-on-dual-ecs-instances">DeepSeek-R1 and V3 model deployment documents based on dual ECS instances</a></li>
+              
+                  <li><a href="#deployment-instructions">Deployment Instructions</a></li>
+                  
+              
+                  <li><a href="#overall-architecture">Overall architecture</a></li>
+                  
+                      <li class="li-h3"><a href="#userclient-layer">User/Client Layer</a></li>
+                  
+                      <li class="li-h3"><a href="#service-layer">Service Layer</a></li>
+                  
+                      <li class="li-h3"><a href="#infrastructure-layer">Infrastructure Layer</a></li>
+                  
+              
+                  <li><a href="#billing-instructions">Billing instructions</a></li>
+                  
+              
+                  <li><a href="#required-permissions-for-ram-account">Required permissions for RAM account</a></li>
+                  
+              
+                  <li><a href="#deployment-process">Deployment Process</a></li>
+                  
+              
+                  <li><a href="#instructions-for-use">Instructions for use</a></li>
+                  
+                      <li class="li-h3"><a href="#query-model-deployment-parameters">Query model deployment parameters</a></li>
+                  
+                      <li class="li-h3"><a href="#customize-model-deployment-parameters">Customize model deployment parameters</a></li>
+                  
+                      <li class="li-h3"><a href="#intranet-api-access">Intranet API access</a></li>
+                  
+                      <li class="li-h3"><a href="#public-internet-api-access">Public Internet API access</a></li>
+                  
+              
+                  <li><a href="#configure-the-vllm-api-using-the-chatbox-client-for-conversation-optional">Configure the vLLM API using the Chatbox client for conversation (optional)</a></li>
+                  
+              
+                  <li><a href="#performance-testing">Performance Testing</a></li>
+                  
+                      <li class="li-h3"><a href="#pressure-test-process-for-reference">Pressure test process (for reference)</a></li>
+                  
+                      <li class="li-h3"><a href="#model-service-performance-test">Model service performance test</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="deepseek-r1-and-v3-model-deployment-documents-based-on-dual-ecs-instances">DeepSeek-R1 and V3 model deployment documents based on dual ECS instances</h1>
+<h2 id="deployment-instructions">Deployment Instructions</h2>
+<p>This service provides a one-click deployment solution for large models based on ECS mirroring + Vllm + Ray. DeepSeek-R1 full-blood version and DeepSeek-V3 models can be deployed in 30 minutes through dual ECS instances.</p>
+<p>This service uses ECS mirror packaging standard environments and realizes one-click deployment of cloud resources and large models through Ros templates. Developers do not need to care about the standard environment for model deployment and operation and the underlying cloud resource orchestration. They only need to add a few parameters to enjoy the inference experience of DeepSeek-R1 full-blooded version and DeepSeek-V3.</p>
+<p>Under the scheme provided by this service, the average token per request is calculated by 10kb, and two GU8TF-specification ECS instances can be used. The number of concurrent requests per second (QPS) that can be supported by the DeepSeek-R1 full-blood version theory is about 75, and the DeepSeek-V3 is about 67.</p>
+<p>The models supported by this service are as follows:
+* <a href="https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1">deepseek-ai/DeepSeek-R1</a>
+* <a href="https://www.modelscope.cn/models/deepseek-ai/DeepSeek-V3">deepseek-ai/DeepSeek-V3</a></p>
+<h2 id="overall-architecture">Overall architecture</h2>
+<h3 id="userclient-layer">User/Client Layer</h3>
+<ul>
+<li>Access Method：VPC Internal Access, Public Network Access and API Key Access</li>
+<li>Response Method: Streaming Return</li>
+</ul>
+<h3 id="service-layer">Service Layer</h3>
+<ul>
+<li>Large Model Service: Provide Standard API Interface for Invocation</li>
+<li>VLLM Service: Tensor Parallel Size 8 and Pipeline Parallel Size 2</li>
+</ul>
+<h3 id="infrastructure-layer">Infrastructure Layer</h3>
+<ul>
+<li>Network and Resources: Ray Cluster, Dual ECS GPU Instances, ECS Image and VPC Network</li>
+<li>ECS Image: VLLM Standard Operation Environment and Large Model Files</li>
+</ul>
+<h2 id="billing-instructions">Billing instructions</h2>
+<p>The cost of this service on Alibaba Cloud mainly involves:
+* Specifications of the selected GPU cloud server
+* Number of nodes
+* Disk capacity
+* Public network bandwidth
+Billing method: pay by volume (hours) or annual monthly payment
+Estimated costs are visible in real time when creating an instance.</p>
+<h2 id="required-permissions-for-ram-account">Required permissions for RAM account</h2>
+<p>To deploy service instances, some Alibaba Cloud resources need to be accessed and created.Therefore, your account needs permissions to include the following resources.</p>
+<table>
+<thead>
+<tr>
+<th>Permission Policy Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AliyunECSFullAccess</td>
+<td>Permissions to manage cloud server services (ECS)</td>
+</tr>
+<tr>
+<td>AliyunVPCFullAccess</td>
+<td>Permissions to manage proprietary networks (VPCs)</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>Permissions to manage resource orchestration services (ROS)</td>
+</tr>
+<tr>
+<td>AliyunComputeNestUserFullAccess</td>
+<td>Manage user-side permissions for ComputeNest</td>
+</tr>
+</tbody>
+</table>
+<h2 id="deployment-process">Deployment Process</h2>
+<ol>
+<li>Click <a href="https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&amp;ServiceId=service-0326350f111e4230a9c9">[Deployment Link]</a>.Select the dual-machine version and confirm that the GU8TF example specification has been applied for.Fill in the parameters according to the prompts on the interface, and you can choose whether to turn on the public network according to your needs. You can see the corresponding inquiry details. After confirming the parameters, click Next: Confirm the order**.
+<img alt="deploy-ecs-two-1.png" src="../png-en/deploy-ecs-two-1.png" />
+<img alt="deploy-ecs-two-2.png" src="../png-en/deploy-ecs-two-2.png" /></li>
+<li>Click <strong>Next: Confirm the order ** and you can see the price preview. Then you can click </strong>Deploy now** and wait for the deployment to complete.(If the RAM permission is insufficient, you need to add RAM permissions to the sub-account)
+<img alt="price-ecs-two.png" src="../png-en/price-ecs-two.png" /></li>
+<li>After the deployment is completed, you can start using the service.Click on the service instance name to enter the service instance details, and use the Api to call the sample to access the service.If it is an intranet access, you must ensure that the ECS instance is under the same VPC.
+<img alt="deploying-ecs-one.png" src="../png-en/deploying-ecs-one.png" />
+<img alt="result-ecs-one-1.png" src="../png-en/result-ecs-one-1.png" />
+<img alt="result-ecs-one-2.png" src="../png-en/result-ecs-one-2.png" /></li>
+<li>After ssh accesses the ECS instance, execute docker logs vllm to query the model service deployment log.When you see the result shown in the figure below, it means that the model service is deployed successfully.The path where the model is located is /root/llm_model/.
+<img alt="deployed.png" src="../deployed.png" /></li>
+</ol>
+<h2 id="instructions-for-use">Instructions for use</h2>
+<h3 id="query-model-deployment-parameters">Query model deployment parameters</h3>
+<ol>
+<li>Copy the service instance name.Go to [Resource Orchestration Console] (https://ros.console.aliyun.com/cn-hangzhou/stacks) to view the corresponding resource stack.
+<img alt="ros-stack-1.png" src="../png-en/ros-stack-1.png" />
+<img alt="ros-stack-2.png" src="../png-en/ros-stack-2.png" /></li>
+<li>Enter the resource stack corresponding to the service instance, you can see all the resources opened and view all the scripts executed during the model deployment process.
+<img alt="ros-stack-ecs-two.png" src="../png-en/ros-stack-ecs-two.png" />
+<img alt="get-shell.png" src="../png-en/get-shell.png" /></li>
+</ol>
+<h3 id="customize-model-deployment-parameters">Customize model deployment parameters</h3>
+<p>If you have the requirement for custom model deployment parameters, you can modify it after deploying the service instance as follows.Currently, two deployment methods are provided: vllm and sglang.</p>
+<ol>
+<li>
+<p>Remote connection, log in to the master node and the worker node respectively (the two instances are named llm-xxxx-master and llm-xxxx-worker respectively).
+<img alt="private-ip-ecs-two-1.png" src="../png-en/private-ip-ecs-two-1.png" /></p>
+</li>
+<li>
+<p>Execute the following command to stop the model services in both nodes.
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm</p>
+</li>
+<li>
+<p>Please refer to the Query Model Deployment Parameters section in this document to obtain the scripts that the model deployment is actually executed in the master node and worker node.</p>
+</li>
+<li>
+<p>The following are the reference scripts for vllm and sglang deployments. You can refer to the parameters to annotate custom model deployment parameters and modify the actual executed script.After modification, execute the master node script first, and then execute the worker node script after success.</p>
+</li>
+<li>
+<p>vllm deployment master node reference script
+    ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 &amp;&amp; # Customizable version, such as pip install vllm==0.7.1. Must be consistent with the worker node.
+    export NCCL_IB_DISABLE=0 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_DEBUG=INFO &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    ray start --head --dashboard-host 0.0.0.0 --port=6379 &amp;&amp;
+    tail -f /dev/null"</p>
+</li>
+<li>
+<p>vllm deployment worker node reference script
+    ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 &amp;&amp; # Customizable versions, such as pip install vllm==0.7.1. Must be consistent with the master node.
+    export NCCL_IB_DISABLE=0 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_DEBUG=INFO &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    ray start --address='${HEAD_NODE_ADDRESS}:6379' &amp;&amp; # Fill in the intranet IP address of the master node.
+    vllm serve /root/llm-model/${ModelName} \
+    --served-model-name ${ModelName} \
+    --gpu-memory-utilization 0.98 \ # Gpu occupancy rate, too high may cause other processes to trigger OOM.Value range: 0~1
+    --max-model-len ${MaxModelLen} \ # The maximum length of the model, the value range is related to the model itself.
+    --enable-chunked-prefill \
+    --host=0.0.0.0 \
+    --port 8000 \
+    --trust-remote-code \
+    --api-key "${VLLM_API_KEY}" \
+    --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}') \ # The number of GPUs used by a single node, and the default is to use all GPUs of a single ECS instance.
+    --pipeline-parallel-size 2" # The number of streamlines parallel, recommended to set it to the total number of nodes.</p>
+</li>
+<li>
+<p>sglang deployment master node reference script
+    ```shell
+    docker run -d -t --net=host --gpus all \
+    --entrypoint /bin/bash \
+    --privileged \
+    --ipc=host \
+    --name llm-server \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install sglang==0.4.3 &amp;&amp; # Customizable version, must be consistent with the worker node
+    export NCCL_IB_DISABLE=0 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_DEBUG=INFO &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    python3 -m sglang.launch_server \
+    --model-path /root/llm-model/${ModelName} \
+    --served-model-name ${ModelName} \
+    --tp 16 \ # Currently sglang does not support streamline parallelism, and all GPUs in two ECS instances are used by default.
+    --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # Fill in the intranet IP address of the master node.
+    --nnodes 2 # The node finally uses two ECS instances by default.
+    --node-rank 0 # Node sequence number, default is 0.
+    --trust-remote-code \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --mem-fraction-static 0.9 # Gpu occupancy rate, too high may cause other processes to trigger OOM.Value range: 0~1</p>
+</li>
+<li>
+<p>sglang deployment worker node reference script
+    ```shell
+    docker run -d -t --net=host --gpus all \
+    --entrypoint /bin/bash \
+    --privileged \
+    --ipc=host \
+    --name llm-server \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install sglang==0.4.3 &amp;&amp; # Customizable version, must be consistent with the master node
+    export NCCL_IB_DISABLE=0 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_DEBUG=INFO &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # The environment variables required for high-speed network communication using elastic RDMA are not recommended to change them
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # Use vpc for network communication environment variables, do not delete and modify
+    python3 -m sglang.launch_server \
+    --model-path /root/llm-model/${ModelName} \
+    --served-model-name ${ModelName} \
+    --tp 16 \ # Currently sglang does not support streamline parallelism, and all GPUs in two ECS instances are used by default.
+    --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # Fill in the intranet IP address of the master node.
+    --nnodes 2 # The node finally uses two ECS instances by default.
+    --node-rank 1 # Node number, default is 1.
+    --trust-remote-code \
+    --host 0.0.0.0 \
+    --port 8000 \
+    --mem-fraction-static 0.9 # Gpu occupancy rate, too high may cause other processes to trigger OOM.Value range: 0~1</p>
+</li>
+</ol>
+<h3 id="intranet-api-access">Intranet API access</h3>
+<p>Copy the Api call example and paste the Api call example in the ECS instance of the resource tab.It can also be accessed in other ECS within the same VPC.
+<img alt="result-ecs-one-2.png" src="../png-en/result-ecs-one-2.png" />
+<img alt="private-ip-ecs-two-1.png" src="../png-en/private-ip-ecs-two-1.png" />
+<img alt="private-ip-ecs-one-2.png" src="../png-en/private-ip-ecs-one-2.png" /></p>
+<h3 id="public-internet-api-access">Public Internet API access</h3>
+<p>Copy the Api call example and paste the Api call example in the local terminal.
+<img alt="result-ecs-one-2.png" src="../png-en/result-ecs-one-2.png" />
+<img alt="public-ip-ecs-one-1.png" src="../png-en/public-ip-ecs-one-1.png" /></p>
+<h2 id="configure-the-vllm-api-using-the-chatbox-client-for-conversation-optional">Configure the vLLM API using the Chatbox client for conversation (optional)</h2>
+<ol>
+<li>Visit Chatbox [Download Address] (https://chatboxai.app/zh#download) to download and install the client. This solution takes macOS M3 as an example.
+<img alt="install-chatbox-1.png" src="../png-en/install-chatbox-1.png" /></li>
+<li>Run and configure the vLLM API and click Settings.
+<img alt="install-chatbox-2.png" src="../png-en/install-chatbox-2.png" /></li>
+<li>Configure in the pop-up kanban according to the following table.</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>Project</th>
+<th>Description</th>
+<th>Example Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model Provider</td>
+<td>Pull down to select the model provider.</td>
+<td>Add a custom provider</td>
+</tr>
+<tr>
+<td>Name</td>
+<td>Fill in the name of the model provider.</td>
+<td>vLLM API</td>
+</tr>
+<tr>
+<td>API Domain Name</td>
+<td>Fill in the model service call address.</td>
+<td>http://<ECS public network IP>:8000</td>
+</tr>
+<tr>
+<td>API Path</td>
+<td>Fill in the API Path.</td>
+<td>/v1/chat/completes</td>
+</tr>
+<tr>
+<td>Network Compatibility</td>
+<td>Click to enable to improve network compatibility</td>
+<td>Open</td>
+</tr>
+<tr>
+<td>API Key</td>
+<td>Fill in the Model Service Call API Key.</td>
+<td>After deploying the service instance, you can get Api_Key on the service instance page</td>
+</tr>
+<tr>
+<td>Model</td>
+<td>Fill in the called model.</td>
+<td>deepseek-ai/DeepSeek-R1</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>Save the configuration.The conversation can be performed in the text input box.Enter the question Who are you?Or after other instructions, the model service is called to obtain the corresponding response.</li>
+</ol>
+<h2 id="performance-testing">Performance Testing</h2>
+<h3 id="pressure-test-process-for-reference">Pressure test process (for reference)</h3>
+<blockquote>
+<p>**Prerequisites: ** 1. It is impossible to directly test model services with API-key; 2. Public network is required.</p>
+</blockquote>
+<h4 id="redeploy-the-model-service">Redeploy the model service</h4>
+<ol>
+<li>Remote connection and log in to the worker node (named llm-xxxx-worker).
+   <img alt="private-ip-ecs-two-1.png" src="../png-en/private-ip-ecs-two-1.png" /></li>
+<li>Execute the following command to stop the model service.
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm</li>
+<li>Please refer to the Query Model Deployment Parameters section in this document to obtain the scripts that the worker node model deployment actually executes.</li>
+<li>Remove the --api-key parameter in the script and execute the remaining scripts in the ECS instance.Execute docker logs vllm.If the result is shown in the figure below, the model service is redeployed successfully.
+   <img alt="deployed.png" src="../deployed.png" /></li>
+</ol>
+<h4 id="perform-performance-testing">Perform performance testing</h4>
+<p>Taking Deepseek-R1 as an example, after the model service is deployed, ssh logs into the ECS instance.Execute the following command to get the model service performance test results.You can modify it yourself according to the parameter description.
+   ```shell
+    yum install -y git-lfs
+    git lfs install
+    git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
+    git lfs clone https://github.com/vllm-project/vllm.git</p>
+<pre><code>docker exec vllm bash -c "
+pip install pandas datasets &amp;&amp;
+python3 /root/vllm/benchmarks/benchmark_serving.py \
+--backend vllm \
+--model /root/llm-model/deepseek-ai/DeepSeek-R1 \
+--served-model-name deepseek-ai/DeepSeek-R1 \
+--sonnet-input-len 1024 \ # Maximum input length
+--sonnet-output-len 4096 \ # Maximum output length
+--sonnet-prefix-len 50 \ # Prefix length
+--num-prompts 400 \ # Randomly select or process 400 prompts from the dataset for performance testing.
+--request-rate 20 \ # Simulate a stress test of 20 concurrent requests per second, lasting 20 seconds, with a total of 400 requests.Evaluate the throughput and latency of the model service under load.
+--port 8000 \
+--trust-remote-code \
+--dataset-name sharegpt \
+--save-result \
+--dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
+"
+</code></pre>
+<p>```</p>
+<h3 id="model-service-performance-test">Model service performance test</h3>
+<p>Under this service plan, the inference response performance of the model service with a QPS of 75 and 60 was tested respectively for Deepseek-R1 and V3, and the pressure measurement duration was 20s.</p>
+<h4 id="deepseek-r1">Deepseek-R1</h4>
+<h5 id="qps-is-75">QPS is 75</h5>
+<p><img alt="qps75-r1-ecs-two.png" src="../qps75-r1-ecs-two.png" /></p>
+<h4 id="deepseek-v3">Deepseek-V3</h4>
+<h5 id="qps-is-60">QPS is 60</h5>
+<p><img alt="qps60-v3-ecs-two.png" src="../qps60-v3-ecs-two.png" /></p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2025-07-31 09:42:36.304104+00:00
+  -->
+</body>
+</html>

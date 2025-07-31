@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>基于双ECS实例的DeepSeek-R1和V3模型部署文档 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#ecsdeepseek-r1v3">基于双ECS实例的DeepSeek-R1和V3模型部署文档</a></li>
+              
+                  <li><a href="#_1">部署说明</a></li>
+                  
+              
+                  <li><a href="#_2">整体架构</a></li>
+                  
+              
+                  <li><a href="#_3">计费说明</a></li>
+                  
+              
+                  <li><a href="#ram">RAM账号所需权限</a></li>
+                  
+              
+                  <li><a href="#_4">部署流程</a></li>
+                  
+              
+                  <li><a href="#_5">使用说明</a></li>
+                  
+                      <li class="li-h3"><a href="#_6">查询模型部署参数</a></li>
+                  
+                      <li class="li-h3"><a href="#_7">自定义模型部署参数</a></li>
+                  
+                      <li class="li-h3"><a href="#api">内网API访问</a></li>
+                  
+                      <li class="li-h3"><a href="#api_1">公网API访问</a></li>
+                  
+              
+                  <li><a href="#chatbox-vllm-api">使用 Chatbox 客户端配置 vLLM API 进行对话(可选)</a></li>
+                  
+              
+                  <li><a href="#_8">性能测试</a></li>
+                  
+                      <li class="li-h3"><a href="#_9">压测过程(供参考)</a></li>
+                  
+                      <li class="li-h3"><a href="#_12">性能测试结果</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="ecsdeepseek-r1v3">基于双ECS实例的DeepSeek-R1和V3模型部署文档</h1>
+<h2 id="_1">部署说明</h2>
+<p>本服务提供了基于ECS镜像+Vllm+Ray的大模型一键部署方案，30分钟即可通过双ECS实例部署使用DeepSeek-R1满血版和DeepSeek-V3模型。</p>
+<p>本服务通过ECS镜像打包标准环境，通过Ros模版实现云资源与大模型的一键部署，开发者无需关心模型部署运行的标准环境与底层云资源编排，仅需添加几个参数即可享受DeepSeek-R1满血版和DeepSeek-V3的推理体验。</p>
+<p>本服务提供的方案下，以平均每次请求的token为10kb计算，采用两台GU8TF规格的ECS实例，DeepSeek-R1满血版理论可支持的每秒并发请求数(QPS)约为75，DeepSeek-V3约为67。</p>
+<p>本服务支持的模型如下：
+* <a href="https://www.modelscope.cn/models/deepseek-ai/DeepSeek-R1">deepseek-ai/DeepSeek-R1</a>
+* <a href="https://www.modelscope.cn/models/deepseek-ai/DeepSeek-V3">deepseek-ai/DeepSeek-V3</a></p>
+<h2 id="_2">整体架构</h2>
+<p><img alt="arch-ecs-two.png" src="../arch-ecs-two.png" /></p>
+<h2 id="_3">计费说明</h2>
+<p>本服务在阿里云上的费用主要涉及：
+* 所选GPU云服务器的规格
+* 节点数量
+* 磁盘容量
+* 公网带宽
+计费方式：按量付费（小时）或包年包月
+预估费用在创建实例时可实时看到。</p>
+<h2 id="ram">RAM账号所需权限</h2>
+<p>部署服务实例，需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。</p>
+<table>
+<thead>
+<tr>
+<th>权限策略名称</th>
+<th>备注</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AliyunECSFullAccess</td>
+<td>管理云服务器服务（ECS）的权限</td>
+</tr>
+<tr>
+<td>AliyunVPCFullAccess</td>
+<td>管理专有网络（VPC）的权限</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>管理资源编排服务（ROS）的权限</td>
+</tr>
+<tr>
+<td>AliyunComputeNestUserFullAccess</td>
+<td>管理计算巢服务（ComputeNest）的用户侧权限</td>
+</tr>
+</tbody>
+</table>
+<h2 id="_4">部署流程</h2>
+<ol>
+<li>单击<a href="https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&amp;ServiceId=service-fcfc1ea4afaf47bcbadc">部署链接</a>。选择双机版，并确认已申请GU8TF实例规格。根据界面提示填写参数，可根据需求选择是否开启公网，可以看到对应询价明细，确认参数后点击<strong>下一步：确认订单</strong>。
+    <img alt="deploy-ecs-two-1.png" src="../deploy-ecs-two-1.png" />
+    <img alt="deploy-ecs-one-2.png" src="../deploy-ecs-one-2.png" /></li>
+<li>点击<strong>下一步：确认订单</strong>后可以看到价格预览，随后可点击<strong>立即部署</strong>，等待部署完成。(提示RAM权限不足时需要为子账号添加RAM权限)
+    <img alt="price-ecs-two.png" src="../price-ecs-two.png" /></li>
+<li>等待部署完成后，就可以开始使用服务了。点击服务实例名称，进入服务实例详情，使用Api调用示例即可访问服务。如果是内网访问，需保证ECS实例在同一个VPC下。
+    <img alt="deploying-ecs-two.png" src="../deploying-ecs-two.png" />
+    <img alt="result-ecs-two-1.png" src="../result-ecs-two-1.png" />
+    <img alt="result-ecs-two-2.png" src="../result-ecs-two-2.png" /></li>
+<li>ssh访问ECS实例后，执行 docker logs vllm 即可查询模型服务部署日志。当您看到下图所示结果时，表示模型服务部署成功。模型所在路径为/root/llm_model/。
+   <img alt="deployed.png" src="../deployed.png" /></li>
+</ol>
+<h2 id="_5">使用说明</h2>
+<h3 id="_6">查询模型部署参数</h3>
+<ol>
+<li>复制服务实例名称。到<a href="https://ros.console.aliyun.com/cn-hangzhou/stacks">资源编排控制台</a>查看对应的资源栈。
+    <img alt="ros-stack-1.png" src="../ros-stack-1.png" />
+    <img alt="ros-stack-2.png" src="../ros-stack-2.png" /></li>
+<li>进入服务实例对应的资源栈，可以看到所开启的全部资源，并查看到模型部署过程中执行的全部脚本。
+    <img alt="ros-stack-3.png" src="../ros-stack-3.png" />
+    <img alt="get-shell.png" src="../get-shell.png" /></li>
+</ol>
+<h3 id="_7">自定义模型部署参数</h3>
+<p>如果您有自定义的模型部署参数的需求，可以在部署服务实例后，按照如下操作步骤进行修改。当前提供vllm和sglang两种部署方式。</p>
+<ol>
+<li>远程连接，分别登入master节点和worker节点（两台实例分别命名为llm-xxxx-master和llm-xxxx-worker）。
+    <img alt="private-ip-ecs-two-1.png" src="../private-ip-ecs-two-1.png" /></li>
+<li>执行下面的命令，将两个节点内的模型服务都停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm</li>
+<li>请参考本文档中的 查询模型部署参数 部分，获取master节点和worker节点中模型部署实际执行的脚本。</li>
+<li>下面分别是vllm与sglang部署的参考脚本，您可参考参数注释自定义模型部署参数，修改实际执行的脚本。修改后，先执行master节点脚本，成功后，再执行worker节点脚本即可。</li>
+<li>vllm部署master节点参考脚本
+    ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 &amp;&amp; # 可自定义版本，如 pip install vllm==0.7.1。必须与worker节点保持一致。
+    export NCCL_IB_DISABLE=0 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    ray start --head --dashboard-host 0.0.0.0 --port=6379 &amp;&amp; 
+    tail -f /dev/null"</li>
+<li>vllm部署worker节点参考脚本
+  ```shell
+    docker run -t -d \
+    --entrypoint /bin/bash \
+    --name=vllm \
+    --ipc=host \
+    --cap-add=SYS_PTRACE \
+    --network=host \
+    --gpus all \
+    --privileged \
+    --ulimit memlock=-1 \
+    --ulimit stack=67108864 \
+    -v /root:/root \
+    egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \
+    -c "pip install --upgrade vllm==0.8.2 &amp;&amp; # 可自定义版本，如 pip install vllm==0.7.1。必须与master节点保持一致。
+    export NCCL_IB_DISABLE=0 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    ray start --address='${HEAD_NODE_ADDRESS}:6379' &amp;&amp; # 填写master节点的内网IP地址。
+    vllm serve /root/llm-model/${ModelName} \ 
+    --served-model-name ${ModelName} \
+    --gpu-memory-utilization 0.98 \  # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1
+    --max-model-len ${MaxModelLen} \ # 模型最大长度，取值范围与模型本身有关。
+    --enable-chunked-prefill \
+    --host=0.0.0.0 \
+    --port 8000 \
+    --trust-remote-code \
+    --api-key "${VLLM_API_KEY}" \
+    --tensor-parallel-size $(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l | awk '{print $1}') \ # 单节点使用GPU数量，默认使用单台ECS实例的全部GPU。
+    --pipeline-parallel-size 2" # 流线并行数，推荐设置为节点总数。</li>
+<li>sglang部署master节点参考脚本
+  ```shell
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name llm-server \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \ 
+   -c "pip install sglang==0.4.3 &amp;&amp; # 可自定义版本，必须与worker节点保持一致
+    export NCCL_IB_DISABLE=0 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+   python3 -m sglang.launch_server \
+   --model-path /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --tp 16 \ # 当前sglang不支持流线并行，默认使用两台ECS实例中全部GPU。
+   --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # 填写master节点的内网IP地址。
+   --nnodes 2 # 节点总算，默认使用两台ECS实例。
+   --node-rank 0 # 节点序号，默认为0。
+   --trust-remote-code \
+   --host 0.0.0.0 \
+   --port 8000 \
+   --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1</li>
+<li>sglang部署worker节点参考脚本
+  ```shell
+   docker run -d -t --net=host --gpus all \
+   --entrypoint /bin/bash \
+   --privileged \
+   --ipc=host \
+   --name llm-server \
+   -v /root:/root \
+   egs-registry.cn-hangzhou.cr.aliyuncs.com/egs/vllm:0.7.2-sglang0.4.3.post2-pytorch2.5-cuda12.4-20250224 \ 
+   -c "pip install sglang==0.4.3 &amp;&amp; # 可自定义版本，必须与master节点保持一致
+    export NCCL_IB_DISABLE=0 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_DEBUG=INFO &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_NET_GDR_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_P2P_LEVEL=5 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export NCCL_IB_GID_INDEX=1 &amp;&amp; # 采用弹性RDMA进行高速网络通信所需环境变量，不建议改变
+    export GLOO_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+    export NCCL_SOCKET_IFNAME=eth0 &amp;&amp; # 采用vpc进行网络通信所需环境变量，勿删改
+   python3 -m sglang.launch_server \
+   --model-path /root/llm-model/${ModelName} \
+   --served-model-name ${ModelName} \
+   --tp 16 \ # 当前sglang不支持流线并行，默认使用两台ECS实例中全部GPU。
+   --dist-init-addr ${HEAD_NODE_ADDRESS}:20000 # 填写master节点的内网IP地址。
+   --nnodes 2 # 节点总算，默认使用两台ECS实例。
+   --node-rank 1 # 节点序号，默认为1。
+   --trust-remote-code \
+   --host 0.0.0.0 \
+   --port 8000 \
+   --mem-fraction-static 0.9 # Gpu占用率，过高可能导致其他进程触发OOM。取值范围:0~1</li>
+</ol>
+<h3 id="api">内网API访问</h3>
+<p>复制Api调用示例，在资源标签页的ECS实例中粘贴Api调用示例即可。也可在同一VPC内的其他ECS中访问。
+    <img alt="result-ecs-two-2.png" src="../result-ecs-two-2.png" />
+    <img alt="private-ip-ecs-two-1.png" src="../private-ip-ecs-two-1.png" />
+    <img alt="private-ip-ecs-two-2.png" src="../private-ip-ecs-two-2.png" /></p>
+<h3 id="api_1">公网API访问</h3>
+<p>复制Api调用示例，在本地终端中粘贴Api调用示例即可。
+    <img alt="result-ecs-two-2.png" src="../result-ecs-two-2.png" />
+    <img alt="public-ip-ecs-two-1.png" src="../public-ip-ecs-two-1.png" /></p>
+<h2 id="chatbox-vllm-api">使用 Chatbox 客户端配置 vLLM API 进行对话(可选)</h2>
+<ol>
+<li>访问 Chatbox <a href="https://chatboxai.app/zh#download">下载地址</a>下载并安装客户端，本方案以 macOS M3 为例。
+   <img alt="install-chatbox-1.png" src="../install-chatbox-1.png" /></li>
+<li>运行并配置 vLLM API ，单击设置。
+   <img alt="install-chatbox-2.png" src="../install-chatbox-2.png" /></li>
+<li>在弹出的看板中按照如下表格进行配置。</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>项目</th>
+<th>说明</th>
+<th>示例值</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>模型提供方</td>
+<td>下拉选择模型提供方。</td>
+<td>添加自定义提供方</td>
+</tr>
+<tr>
+<td>名称</td>
+<td>填写定义模型提供方名称。</td>
+<td>vLLM API</td>
+</tr>
+<tr>
+<td>API 域名</td>
+<td>填写模型服务调用地址。</td>
+<td>http://<ECS公网IP>:8000</td>
+</tr>
+<tr>
+<td>API 路径</td>
+<td>填写 API 路径。</td>
+<td>/v1/chat/completions</td>
+</tr>
+<tr>
+<td>网络兼容性</td>
+<td>点击开启改善网络兼容性</td>
+<td>开启</td>
+</tr>
+<tr>
+<td>API 密钥</td>
+<td>填写模型服务调用 API 密钥。</td>
+<td>部署服务实例后，在服务实例页面可获取Api_Key</td>
+</tr>
+<tr>
+<td>模型</td>
+<td>填写调用的模型。</td>
+<td>deepseek-ai/DeepSeek-R1</td>
+</tr>
+</tbody>
+</table>
+<ol>
+<li>保存配置。在文本输入框中可以进行对话交互。输入问题你是谁？或者其他指令后，调用模型服务获得相应的响应。
+   <img alt="install-chatbox-3.png" src="../install-chatbox-3.png" /></li>
+</ol>
+<h2 id="_8">性能测试</h2>
+<h3 id="_9">压测过程(供参考)</h3>
+<blockquote>
+<p><strong>前提条件：</strong> 1. 无法直接测试带api-key的模型服务；2. 需要公网。</p>
+</blockquote>
+<h4 id="_10">重新部署模型服务</h4>
+<ol>
+<li>远程连接，登入worker节点（命名为llm-xxxx-worker）。
+   <img alt="private-ip-ecs-one-1.png" src="../private-ip-ecs-one-1.png" /></li>
+<li>执行下面的命令，将模型服务停止。
+    ```shell
+    sudo docker stop vllm
+    sudo docker rm vllm</li>
+<li>请参考本文档中的 查询模型部署参数 部分，获取worker节点模型部署实际执行的脚本。</li>
+<li>去掉脚本中的--api-key参数，在ECS实例中执行剩余脚本。执行docker logs vllm。若结果如下图所示，则模型服务重新部署成功。
+   <img alt="deployed.png" src="../deployed.png" /></li>
+</ol>
+<h4 id="_11">进行性能测试</h4>
+<p>以Deepseek-R1为例，模型服务部署完成后，ssh登录ECS实例。执行下面的命令，即可得到模型服务性能测试结果。可根据参数说明自行修改。
+   ```shell
+    yum install -y git-lfs
+    git lfs install
+    git lfs clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git
+    git lfs clone https://github.com/vllm-project/vllm.git</p>
+<pre><code>docker exec vllm bash -c "
+pip install pandas datasets &amp;&amp;
+python3 /root/vllm/benchmarks/benchmark_serving.py \
+--backend vllm \
+--model /root/llm-model/deepseek-ai/DeepSeek-R1 \
+--served-model-name deepseek-ai/DeepSeek-R1 \
+--sonnet-input-len 1024 \ # 最大输入长度
+--sonnet-output-len 4096 \ # 最大输出长度
+--sonnet-prefix-len 50 \ # 前缀长度
+--num-prompts 400 \ # 从数据集中随机选取或按顺序处理 400 个 prompt 进行性能测试。
+--request-rate 20 \ # 模拟每秒 20 个并发请求的压力测试，持续20秒，共400个请求。评估模型服务在负载下的吞吐量和延迟。
+--port 8000 \
+--trust-remote-code \
+--dataset-name sharegpt \
+--save-result \
+--dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json
+"
+</code></pre>
+<p>```</p>
+<h3 id="_12">性能测试结果</h3>
+<p>本服务方案下，针对Deepseek-R1和V3，分别测试QPS为75和60情况下模型服务的推理响应性能，压测持续时间均为20s。</p>
+<h4 id="deepseek-r1">Deepseek-R1</h4>
+<h5 id="qps75">QPS为75</h5>
+<p><img alt="qps75-r1-ecs-two.png" src="../qps75-r1-ecs-two.png" /></p>
+<h4 id="deepseek-v3">Deepseek-V3</h4>
+<h5 id="qps60">QPS为60</h5>
+<p><img alt="qps60-v3-ecs-two.png" src="../qps60-v3-ecs-two.png" /></p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2025-07-31 09:42:36.307695+00:00
+  -->
+</body>
+</html>

@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>vllm Large Model Deployment Guide on ACK Cluster - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../../search/main.js"></script>
+  
+
+  
+
+  <script src="../../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#vllm-large-model-deployment-guide-on-ack-cluster">vllm Large Model Deployment Guide on ACK Cluster</a></li>
+              
+                  <li><a href="#deployment-overview">Deployment Overview</a></li>
+                  
+              
+                  <li><a href="#architecture-overview">Architecture Overview</a></li>
+                  
+              
+                  <li><a href="#cost-explanation">Cost Explanation</a></li>
+                  
+              
+                  <li><a href="#required-ram-account-permissions">Required RAM Account Permissions</a></li>
+                  
+              
+                  <li><a href="#deployment-steps">Deployment Steps</a></li>
+                  
+              
+                  <li><a href="#usage-guide">Usage Guide</a></li>
+                  
+                      <li class="li-h3"><a href="#private-network-api-access">Private Network API Access</a></li>
+                  
+                      <li class="li-h3"><a href="#public-network-api-access">Public Network API Access</a></li>
+                  
+                      <li class="li-h3"><a href="#re-deploying-models">Re-deploying Models</a></li>
+                  
+              
+          
+              <li><a href="#to-deploy-qwq32b-execute">To deploy QwQ32B, execute:</a></li>
+              
+                  <li><a href="#using-the-console">Using the Console</a></li>
+                  
+              
+                  <li><a href="#advanced-tutorials">Advanced Tutorials</a></li>
+                  
+                      <li class="li-h3"><a href="#customizing-fluid-for-model-acceleration">Customizing Fluid for Model Acceleration</a></li>
+                  
+              
+                  <li><a href="#benchmark-results">Benchmark Results</a></li>
+                  
+                      <li class="li-h3"><a href="#benchmark-workflow">Benchmark Workflow</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="vllm-large-model-deployment-guide-on-ack-cluster">vllm Large Model Deployment Guide on ACK Cluster</h1>
+<h2 id="deployment-overview">Deployment Overview</h2>
+<p>This solution provides an out-of-the-box deployment of high-performance large model inference services using Alibaba
+Cloud ComputeNest. It is based on the following core components:</p>
+<ul>
+<li><strong>VLLM</strong>: Provides high-performance parallel inference capabilities, supporting low-latency and high-throughput LLM
+  inference (e.g., Qwen, DeepSeek, etc.).</li>
+<li><strong>ACK Cluster</strong>: A managed Kubernetes environment supporting Serverless workloads.</li>
+</ul>
+<p>After deployment, users can invoke model services via private/public APIs. Resource utilization is improved by several
+times, and developers need not manage underlying container orchestration or resource scheduling—only selecting the model
+on the ComputeNest console is required for one-click deployment.</p>
+<p>The service supports various models and GPU types during deployment, including:</p>
+<ul>
+<li><strong>QwQ32B</strong></li>
+<li><strong>DeepSeek-R1-Distill-Qwen-32B</strong>, GPU: P16EN</li>
+<li><strong>DeepSeek-R1-Distill-Llama-70B</strong>, GPU: P16EN</li>
+<li><strong>Deepseek Full-Blooded Version (671B, fp8)</strong>, GPU: GU8TF</li>
+<li><strong>Deepseek Full-Blooded Version (671B, fp8)</strong>, GPU: P16EN</li>
+</ul>
+<hr />
+<h2 id="architecture-overview">Architecture Overview</h2>
+<p><img alt="arch.png" src="../arch.png" /></p>
+<hr />
+<h2 id="cost-explanation">Cost Explanation</h2>
+<p>The costs for this service on Alibaba Cloud primarily include:</p>
+<ul>
+<li><strong>ACK Cluster Fees</strong></li>
+<li><strong>Jump Server (ECS) Fees</strong><ul>
+<li>Notes: This ECS instance is used to deploy and manage the K8s cluster. The <code>/root</code> directory contains the K8s YAML
+  resource files used for deployment. Parameters can be modified and re-deployed directly afterward. The ECS can be
+  released after deployment if no longer needed.</li>
+</ul>
+</li>
+<li><strong>OSS Fees</strong>
+  <strong>Billing Method</strong>: Pay-as-you-go (hourly) or subscription (prepaid). Estimated costs are visible in real-time during
+  instance creation.</li>
+</ul>
+<hr />
+<h2 id="required-ram-account-permissions">Required RAM Account Permissions</h2>
+<p>The account deploying the instance requires permissions to access and manage Alibaba Cloud resources. The following
+policies must be included:</p>
+<table>
+<thead>
+<tr>
+<th>Permission Policy Name</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>AliyunECSFullAccess</td>
+<td>Permissions to manage ECS (Elastic Compute Service)</td>
+</tr>
+<tr>
+<td>AliyunVPCFullAccess</td>
+<td>Permissions to manage VPC (Virtual Private Cloud)</td>
+</tr>
+<tr>
+<td>AliyunROSFullAccess</td>
+<td>Permissions to manage ROS (Resource Orchestration Service)</td>
+</tr>
+<tr>
+<td>AliyunCSFullAccess</td>
+<td>Permissions to manage ACK (Container Service)</td>
+</tr>
+<tr>
+<td>AliyunComputeNestUserFullAccess</td>
+<td>Permissions to manage ComputeNest (user-side)</td>
+</tr>
+<tr>
+<td>AliyunOSSFullAccess</td>
+<td>Permissions to manage OSS (Object Storage Service)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important</strong>: Contact PDSA to add GPU to your whitelist before deployment.</p>
+<hr />
+<h2 id="deployment-steps">Deployment Steps</h2>
+<ol>
+<li>
+<p>Click the *
+   <em><a href="https://computenest.console.aliyun.com/service/instance/create/ap-southeast-1?type=user&amp;ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88">Deployment Link</a>
+   </em><em>. Follow the interface prompts to fill in parameters and view cost estimates. Confirm parameters and click </em><em>Next:
+   Confirm Order</em>*.
+   <img alt="deploy.png" src="../deploy.png" /></p>
+</li>
+<li>
+<p>Click <strong>Next: Confirm Order</strong> to preview costs. Then click <strong>Deploy Now</strong> and wait for completion.
+   <img alt="price.png" src="../price.png" /></p>
+</li>
+<li>
+<p>After deployment, access the service. Navigate to the instance details to view private network access instructions.
+   If "Support Public Network Access" was selected, public access instructions will also be available.
+   <img alt="result.png" src="../result.png" /></p>
+</li>
+</ol>
+<hr />
+<h2 id="usage-guide">Usage Guide</h2>
+<h3 id="private-network-api-access">Private Network API Access</h3>
+<ol>
+<li>Access the <strong>Private API address</strong> from an ECS instance within the same VPC. Example:
+    <code>shell
+    # Private API request with authentication and streaming (remove "stream" to disable streaming)
+    curl http://$PrivateIP:8000/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer $API_KEY" \
+      -d '{
+        "model": "ds",
+        "messages": [
+          {
+            "role": "user",
+            "content": "Write a letter to your daughter from the future (2035), encouraging her to study science and technology to become a leader in this field. She is currently in 3rd grade."
+          }
+        ],
+        "max_tokens": 1024,
+        "temperature": 0,
+        "top_p": 0.9,
+        "seed": 10,
+        "stream": true
+      }'</code></li>
+</ol>
+<h3 id="public-network-api-access">Public Network API Access</h3>
+<p>If "Support Public Network Access" was selected during deployment, use the public IP directly:</p>
+<pre><code class="language-shell">curl http://$PublicIp:8000/v1/chat/completions \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;model&quot;: &quot;ds&quot;,
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;Write a letter to your daughter from the future (2035), encouraging her to study science and technology to become a leader in this field. She is currently in 3rd grade.&quot;
+      }
+    ],
+    &quot;max_tokens&quot;: 1024,
+    &quot;temperature&quot;: 0,
+    &quot;top_p&quot;: 0.9,
+    &quot;seed&quot;: 10,
+    &quot;stream&quot;: true
+  }'
+</code></pre>
+<p>If public access was not enabled, manually create a <code>LoadBalancer</code> in the cluster. Example (for DeepSeek-R1; adjust
+<code>labels.app</code> for QwQ-32B):</p>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: &quot;internet&quot;
+    service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip-version: ipv4
+  labels:
+    app: deepseek-r1
+  name: svc-public
+  namespace: llm-model
+spec:
+  externalTrafficPolicy: Local
+  ports:
+  - name: serving
+    port: 8000
+    protocol: TCP
+    targetPort: 8000
+  selector:
+    app: deepseek-r1
+  type: LoadBalancer
+</code></pre>
+<hr />
+<h3 id="re-deploying-models">Re-deploying Models</h3>
+<p>Models can be re-deployed using <code>kubectl apply</code> on the jump server or by manually updating templates in the console.</p>
+<h4 id="using-the-jump-server"><strong>Using the Jump Server</strong></h4>
+<ol>
+<li>In the ComputeNest console's instance resources page, locate the ECS jump server and connect via **Remote Connection
+   ** (password-free login).
+   <img alt="resources.png" src="../resources.png" /></li>
+<li>
+<p>Execute commands on the jump server:
+    ```bash
+    [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd /root
+    [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# ls
+    download.log  kubectl  llm-k8s-resource  llm-k8s-resource.tar.gz  llm-model  logtail.sh  ossutil-2.1.0-linux-amd64  ossutil-2.1.0-linux-amd64.zip
+    [root@iZ0jl6qbv1gs36mzvvl1gaZ ~]# cd llm-k8s-resource/
+    [root@iZ0jl6qbv1gs36mzvvl1gaZ llm-k8s-resource]# ll
+    total 28
+    -rw-r--r-- 1 root root  2594 Apr 16 10:04 model.yaml
+    -rw-r--r-- 1  502 games  930 Apr 16 10:04 pre-deploy-application.yaml
+    -rw-r--r-- 1  502 games  426 Apr 16 10:21 private-service.yaml
+    -rw-r--r-- 1  502 games  456 Apr 16 10:21 public-service.yaml
+    -rw-r--r-- 1  502 games 2586 Apr 14 17:30 qwq-application.yaml</p>
+<h1 id="to-deploy-qwq32b-execute">To deploy QwQ32B, execute:</h1>
+<p>kubectl apply -f /root/llm-k8s-resource/qwq-application.yaml
+```</p>
+</li>
+</ol>
+<h4 id="using-the-console"><strong>Using the Console</strong></h4>
+<ol>
+<li>Enter the ComputeNest console, click <strong>Service Instances</strong>, then <strong>Resources</strong> to find the ACK cluster. Enter its
+   console.
+   <img alt="acs.png" src="../acs.png" /></li>
+<li>In the ACK console, navigate to <strong>Workloads</strong> &gt; <strong>Stateful</strong>. For example, view the QwQ-32B Deployment:
+   <img alt="qwq-deploy.png" src="../qwq-deploy.png" /></li>
+<li>Click the Deployment to view details, then edit parameters or update YAML directly.
+   <img alt="modify_deploy.png" src="../modify_deploy.png" /></li>
+</ol>
+<hr />
+<h2 id="advanced-tutorials">Advanced Tutorials</h2>
+<h3 id="customizing-fluid-for-model-acceleration">Customizing Fluid for Model Acceleration</h3>
+<p><strong>Fluid</strong> is a Kubernetes-native engine for orchestrating and accelerating distributed datasets, optimizing performance
+for data-intensive applications like AI inference and large model training. To accelerate elastic scaling scenarios:</p>
+<ol>
+<li>Deploy Fluid following the
+   guide: <a href="https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service">Fluid Documentation</a>.</li>
+<li>Modify parameters such as <code>BucketName</code>, <code>ModelName</code>, and <code>JindoRuntime</code> settings in the YAML below:
+    <code>yaml
+    apiVersion: data.fluid.io/v1alpha1
+    kind: Dataset
+    metadata:
+      name: llm-model
+      namespace: llm-model
+    spec:
+      placement: Shared
+      mounts:
+        - mountPoint: oss://${BucketName}/llm-model
+          options:
+            fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com
+          name: models
+          path: "/"
+          encryptOptions:
+            - name: fs.oss.accessKeyId
+              valueFrom:
+                secretKeyRef:
+                  name: oss-secret
+                  key: akId
+            - name: fs.oss.accessKeySecret
+              valueFrom:
+                secretKeyRef:
+                  name: oss-secret
+                  key: akSecret
+    ---
+    apiVersion: data.fluid.io/v1alpha1
+    kind: JindoRuntime
+    metadata:
+      name: llm-model
+      namespace: llm-model
+    spec:
+      networkmode: ContainerNetwork
+      replicas: ${JindoRuntimeReplicas} # set replicas according to the actual model disk usage
+      master:
+        podMetadata:
+          labels:
+            alibabacloud.com/compute-class: performance
+            alibabacloud.com/compute-qos: default
+      worker:
+        podMetadata:
+          labels:
+            alibabacloud.com/compute-class: performance
+            alibabacloud.com/compute-qos: default
+          annotations:
+            kubernetes.io/resource-type: serverless
+        resources:
+          requests:
+            cpu: 16
+            memory: 128Gi
+          limits:
+            cpu: 16
+            memory: 128Gi
+      tieredstore:
+        levels:
+          - mediumtype: MEM
+            path: /dev/shm
+            volumeType: emptyDir
+            quota: 128Gi
+            high: "0.99"
+            low: "0.95"
+    ---
+    apiVersion: data.fluid.io/v1alpha1
+    kind: DataLoad
+    metadata:
+      name: llm-model
+      namespace: llm-model
+    spec:
+      dataset:
+        name: llm-model
+        namespace: llm-model
+      loadMetadata: true</code></li>
+</ol>
+<hr />
+<h2 id="benchmark-results">Benchmark Results</h2>
+<p>This service uses VLLM's built-in benchmark tool for testing. The test dataset is available
+at <a href="https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files">https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files</a>.</p>
+<h3 id="benchmark-workflow">Benchmark Workflow</h3>
+<ol>
+<li>
+<p>Create a Deployment using the <code>vllm-benchmark</code> image to download the dataset and run tests:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Description</th>
+<th>Example/Value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>$POD_IP</code></strong></td>
+<td>Pod IP running deepseek-r1</td>
+<td><code>kubectl get pod -n llm-model -l app=$(kubectl get deployment -n llm-model -l app -o jsonpath='{.items[0].spec.template.metadata.labels.app}') -o jsonpath='{.items[0].status.podIP}'</code></td>
+</tr>
+<tr>
+<td><strong><code>$API_KEY</code></strong></td>
+<td>Service authentication key</td>
+<td>Obtained from service instance details page (format: <code>sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>)</td>
+</tr>
+<tr>
+<td><strong><code>$MODEL_PATH</code></strong></td>
+<td>Model storage path</td>
+<td>QwQ-32b: <code>/llm-model/Qwen/QwQ-32B</code><br>Qwen3-32b: <code>/llm-model/Qwen/Qwen3-32B</code><br>Qwen3-235b-A22b: <code>/llm-model/Qwen/Qwen3-235B-A22B</code><br>DeepSeek-R1_671b: <code>/llm-model/deepseek-ai/DeepSeek-R1</code><br>DeepSeek-R1_32b: <code>/llm-model/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B</code><br>DeepSeek-R1_70b: <code>/llm-model/deepseek-ai/DeepSeek-R1-Distill-Llama-70B</code></td>
+</tr>
+<tr>
+<td><strong><code>$SERVED_MODEL_NAME</code></strong></td>
+<td>Deployed model name</td>
+<td>QwQ-32b: <code>qwq-32b</code><br>Qwen3-32b: <code>qwen3</code><br>Qwen3-235b-A22b: <code>qwen3</code><br>DeepSeek-R1_671b: <code>deepseek-r1</code><br>DeepSeek-R1_32b: <code>deepseek-r1</code><br>DeepSeek-R1_70b: <code>deepseek-r1</code></td>
+</tr>
+</tbody>
+</table>
+<p>```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-benchmark
+  namespace: llm-model
+  labels:
+    app: vllm-benchmark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-benchmark
+  template:
+    metadata:
+      labels:
+        app: vllm-benchmark
+    spec:
+      volumes:
+      - name: llm-model
+        persistentVolumeClaim:
+          claimName: llm-model
+      containers:
+      - name: vllm-benchmark
+        image: kube-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai/vllm-benchmark:v1
+        command:
+        - "sh"
+        - "-c"
+        - |
+          # Install dependencies
+          yum install -y epel-release &amp;&amp; \
+          yum install -y git git-lfs &amp;&amp; \
+          git lfs install &amp;&amp;</p>
+<pre><code>      # Download the dataset
+      git clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git /root/ShareGPT_V3_unfiltered_cleaned_split
+
+      # Run the benchmark
+      export OPENAI_API_KEY=$API_KEY
+      python3 /root/vllm/benchmarks/benchmark_serving.py \
+        --backend vllm \
+        --model $MODEL_PATH \
+        --served-model-name $SERVED_MODEL_NAME \
+        --trust-remote-code \
+        --dataset-name sharegpt \
+        --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json \
+        --sonnet-input-len 1024 \
+        --sonnet-output-len 6 \
+        --sonnet-prefix-len 50 \
+        --num-prompts 200 \
+        --request-rate 1 \
+        --host $POD_IP \
+        --port 8000 \
+        --endpoint /v1/completions \
+        --save-result
+
+      # Keep the container running
+      sleep inf
+    volumeMounts:
+    - mountPath: /llm-model
+      name: llm-model
+</code></pre>
+<p>```</p>
+</li>
+<li>
+<p>View logs in the ACK console or directly in the container, this is a Sample Benchmark Results:</p>
+</li>
+</ol>
+<p>```plaintext
+=========== Serving Benchmark Result ============
+Successful requests:                     200     <br />
+Benchmark duration (s):                  272.15  <br />
+Total input tokens:                      43390   <br />
+Total generated tokens:                  39980   <br />
+Request throughput (req/s):              0.73    <br />
+Output token throughput (tok/s):         146.91  <br />
+Total Token throughput (tok/s):          306.34  <br />
+---------------Time to First Token----------------
+Mean TTFT (ms):                          246.46  <br />
+Median TTFT (ms):                        244.58  <br />
+P99 TTFT (ms):                           342.11  <br />
+-----Time per Output Token (excl. 1st token)------
+Mean TPOT (ms):                          130.30  <br />
+Median TPOT (ms):                        130.12  <br />
+P99 TPOT (ms):                           139.09  <br />
+---------------Inter-token Latency----------------
+Mean ITL (ms):                           129.89  <br />
+Median ITL (ms):                         125.40  <br />
+P99 ITL (ms):                            173.20  <br />
+=================================================</p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2025-07-31 09:42:36.313011+00:00
+  -->
+</body>
+</html>
