@@ -1,36 +1,36 @@
-# 基于ACS集群的大模型部署文档
+# 基于ACK集群的大模型部署文档
 
 ## 部署说明
 
 本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，支持以下场景：
-- **新建ACS集群**：用户可以选择直接创建一个ACS集群，计算巢会在用户账号下一键创建ACS集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
-- **选择已有ACS、ACK集群**：用户可以选择使用已有的ACS或者ACK集群，计算巢会在用户账号下创建OSS Bucket（也可以选择已有的Bucket），完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+- **新建ACK集群**：用户可以选择直接创建一个ACK集群，计算巢会在用户账号下一键创建ACK集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+- **选择已有ACK集群**：用户可以选择使用已有的ACK集群，计算巢会在用户账号下创建OSS Bucket（也可以选择已有的Bucket），完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
 
 本方案基于以下核心组件：
 
 - **vLLM**：提供高性能并行推理能力，支持低延迟、高吞吐的LLM推理（支持Qwen、DeepSeek全系列模型）
 - **SGLang**: SGLang 是一个适用于大语言模型和视觉语言模型的快速服务框架。
-- **ACS集群**：提供全托管的Kubernetes环境，支持Serverless工作负载弹性伸缩
-- **P16EN/GU8TF GPU加速**：支持多种算力规格，满足不同模型规模的推理需求
+- **ACK集群**：提供全托管的Kubernetes环境
+- **A10/L20/GU8TF GPU加速**：支持多种算力规格，满足不同模型规模的推理需求
 
 部署后，用户可通过私有/公网API调用模型服务，资源利用率提升数倍，开发者无需关注底层容器编排与资源调度，仅需在计算巢控制台页面选择模型即可完成一键部署。
 
 ## 整体架构
 
-![arch.png](arch.png)
+![ack-arch.png](ack-arch.png)
 
 ## 计费说明
 
-| 资源类型   | 计费模式 | 关键配置说明                                     |
-|--------|------|--------------------------------------------|
-| ACS集群  | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同      |
+| 资源类型   | 计费模式 | 关键配置说明                                    |
+|--------|------|-------------------------------------------|
+| ACK集群  | 按量付费 | 根据所选GPU类型和数量计费      |
 | ECS跳板机 | 按量付费 | ecs.u1-c1m2.xlarge（4C8G），用于集群管理，部署完成后可安全释放 |
-| OSS存储  | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                     |
-| NAT网关  | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                    |
+| OSS存储  | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                    |
+| NAT网关  | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                   |
 
 ## RAM账号所需权限
 
-部署实例需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。且需要开通ACS服务，开通后可以在ACS控制台右上角看到：
+部署实例需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。且需要开通ACK服务，开通后可以在ACK控制台右上角看到：
 **开通状态：GPU 按量付费已开通, GPU 容量预留已开通, CPU 按量付费已开通**。
 
 | 权限策略名称                          | 备注                         |
@@ -42,14 +42,12 @@
 | AliyunComputeNestUserFullAccess | 管理计算巢服务（ComputeNest）的用户侧权限 |
 | AliyunOSSFullAccess             | 管理网络对象存储服务（OSS）的权限         |
 
-除此之外，**部署前需要联系PDSA添加GPU白名单。**
-
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACK%E7%89%88)
 。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy.png](deploy.png)
-    这里也可以选择已有ACS集群,如下所示：
+    这里也可以选择已有ACK集群，如果选择已有集群，请确保集群节点还有GPU资源，否则会调度失败，如下所示：
     ![deploy_existing_cluster.png](deploy_existing_cluster.png)
 
 2. 点击**下一步：确认订单**后可以也看到价格预览，随后点击**立即部署**，等待部署完成。
@@ -131,22 +129,6 @@ spec:
   type: LoadBalancer
 ```
 
-### 快速更换模型、GPU规格、Pod数量
-
-**计算巢支持实例变配功能，可以一键更换模型、GPU规格、Pod数量，具体参考如下说明：**
-
-服务实例部署完成后，进入服务实例详情页面，点击右上角的**修改配置**按钮，选择需要修改的参数，修改后可以查看价格和变配前后的参数变化，最后点击**确认**。（变配GPU前请确保原所选地域与可用区有库存）
-![update_instance_1.png](update_instacne_1.png)
-
-![update_instance_2.png](update_instance_2.png)
-
-![update_instance_3.png](update_instance_3.png)
-
-![update_instance_4.png](update_instance_4.png)
-
-实例状态由**变配中**变为**已成功**表示变配成功。
-![update_instance_5.png](update_instance_5.png)
-
 ### 手动重新部署模型
 
 **对于不更换模型、仅改变部署参数的情况，可以参考如下说明重新部署模型：**
@@ -166,10 +148,10 @@ spec:
          ```
 
 2. 控制台方式
-    1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
-       ![acs.png](acs.png)
-    2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
-       ![qwq-deploy.png](qwq-deploy.png)
+    1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACK实例，点击进入。
+       ![ack.png](ack.png)
+    2. 进入ACK控制台后点击**工作负载**，查看**无状态**，以Qwen3-8B为例：可以看到对应的Deployment。
+       ![qwen3-deploy.png](qwen3-deploy.png)
     3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
        ![modify_deploy.png](modify_deploy.png)
 
@@ -338,8 +320,8 @@ spec:
               name: llm-model
 ```
 
-2. 直接在acs控制台查看容器日志或者进入容器查看容器日志
-   ![img.png](console_log.png)
+2. 直接在ACK控制台查看容器日志或者进入容器查看容器日志
+   ![console_log.png](console_log.png)
 
    测试结果示例：
     ```plaintext
