@@ -1,9 +1,9 @@
-# 基于ACS集群的大模型部署文档
+# 基于容器集群集群的大模型部署文档
 
 ## 部署说明
 
 本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，支持以下场景：
-- **新建ACS集群**：用户可以选择直接创建一个ACS集群，计算巢会在用户账号下一键创建ACS集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+- **新建ACS/ACK集群**：用户可以选择直接创建一个ACS/ACK集群，计算巢会在用户账号下一键创建ACS/ACK集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
 - **选择已有ACS、ACK集群**：用户可以选择使用已有的ACS或者ACK集群，计算巢会在用户账号下创建OSS Bucket（也可以选择已有的Bucket），完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
 
 本方案基于以下核心组件：
@@ -20,13 +20,27 @@
 ![arch.png](arch.png)
 
 ## 计费说明
+计算巢服务本身是免费的，客户只用为部署过程中使用到的资源付费，具体费用在费用预估时可以看到。
 
-| 资源类型   | 计费模式 | 关键配置说明                                     |
-|--------|------|--------------------------------------------|
-| ACS集群  | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同      |
-| ECS跳板机 | 按量付费 | ecs.u1-c1m2.xlarge（4C8G），用于集群管理，部署完成后可安全释放 |
-| OSS存储  | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                     |
-| NAT网关  | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                    |
+### ACS集群部署场景
+ACS集群是一种serverless的Kubernetes环境，其资源按需付费，整体来说是按Pod计费,下面的表述中按
+不同的用途进行拆解。
+
+| 资源类型       | 计费模式 | 关键配置说明                                       |
+|------------|------|----------------------------------------------|
+| ACS模型运行Pod | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同    |
+| 同步模型权重Job  | 按量付费 | 模型权重同步时Job产生的费用， 这块主要对应Pod Cpu核数、内存和挂载磁盘的费用。 |
+| 模型部署Job    | 按量付费 | 模型部署时Job产生的费用， 这块主要对应Pod Cpu核数、内存的费用。   |
+| OSS存储      | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                       |
+| NAT网关      | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                      |
+
+### ACK集群部署场景
+
+| 资源类型  | 计费模式 | 关键配置说明                                     |
+|-------|------|--------------------------------------------|
+| ACK集群 | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同      |
+| OSS存储 | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                     |
+| NAT网关 | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                    |
 
 ## RAM账号所需权限
 
@@ -46,7 +60,7 @@
 
 ## 部署流程
 
-1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceName=LLM%E6%8E%A8%E7%90%86%E6%9C%8D%E5%8A%A1-ACS%E7%89%88)
+1. 单击[部署链接](https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&ServiceId=service-c8bf02afe7544025be47)
 。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击**下一步：确认订单**。
     ![deploy.png](deploy.png)
     这里也可以选择已有ACS集群,如下所示：
@@ -150,35 +164,19 @@ spec:
 ### 手动重新部署模型
 
 **对于不更换模型、仅改变部署参数的情况，可以参考如下说明重新部署模型：**
-
-通过跳板机上执行kubectl apply命令或者直接在控制台手动输入模板来重新部署。
-
-1. 跳板机方式
-    1. 进入计算巢控制台服务实例的资源界面，可以看到对应的ECS跳板机，执行**远程连接**，选择免密登录。
-       ![resources.png](resources.png)
-    2. 进入跳板机后执行命令
-         ```bash
-         su root
-         # 修改部署参数
-         vi /model.yaml 
-         # 如果需要更改模型参数，修改了model.yaml后直接执行apply命令即可
-         kubectl apply -f /model.yaml
-         ```
-
-2. 控制台方式
-    1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
-       ![acs.png](acs.png)
-    2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
-       ![qwq-deploy.png](qwq-deploy.png)
-    3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
-       ![modify_deploy.png](modify_deploy.png)
+1. 进入计算巢控制台，点击**服务实例**，点击**资源**，找到对应的ACS实例，点击进入。
+   ![acs.png](acs.png)
+2. 进入ACS控制台后点击**工作负载**，查看**无状态**，以qwq-32b为例：可以看到对应的Deployment。
+   ![qwq-deploy.png](qwq-deploy.png)
+3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
+   ![modify_deploy.png](modify_deploy.png)
 
 **对于更换模型的情况，可以参考如下文档：**
 
 [ACS集群形态的LLM大模型推理镜像使用指导_PG1阿里云产品-阿里云帮助中心](https://help.aliyun.com/document_detail/2864595.html)
 [使用ACS GPU算力构建DeepSeek满血版模型推理服务_容器计算服务(ACS)-阿里云帮助中心](https://help.aliyun.com/zh/cs/user-guide/use-acs-gpu-computing-power-to-build-deepseek-full-model-reasoning-service)
 
-### 进阶教程
+## 进阶教程
 
 - 除了部署服务实例时可以选择**Fluid配置**，也可以后续自定义配置Fluid实现模型加速
 
@@ -260,7 +258,7 @@ spec:
   loadMetadata: true
 ```
 
-### Benchmark
+## Benchmark压测
 
 本服务基采用vllm自带的benchmark进行测试，采用的压测数据集：[https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files](https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files)，
 整体压测流程：
