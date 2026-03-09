@@ -20,43 +20,33 @@
 ![arch.png](arch.png)
 
 ## 计费说明
-计算巢服务本身是免费的，客户只用为部署过程中使用到的资源付费，具体费用在费用预估时可以看到。
+计算巢服务本身是免费的，客户只用为部署过程中使用到的资源付费，具体费用在费用预估时可以看到，这其中ACS集群和ACK集群的计费模型不同，下面会分别进行说明。
 
 ### ACS集群部署场景
-ACS集群是一种serverless的Kubernetes环境，其资源按需付费，整体来说是按Pod计费,下面的表述中按
-不同的用途进行拆解。
+ACS集群是Serverless的计费方式，其中部署的Pod都是按使用量和使用时间来计费，对应的费用预估如下所示：
+![img_1.png](img_1.png)
 
-| 资源类型       | 计费模式 | 关键配置说明                                       |
-|------------|------|----------------------------------------------|
-| ACS模型运行Pod | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同    |
-| 同步模型权重Job  | 按量付费 | 模型权重同步时Job产生的费用， 这块主要对应Pod Cpu核数、内存和挂载磁盘的费用。 |
-| 模型部署Job    | 按量付费 | 模型部署时Job产生的费用， 这块主要对应Pod Cpu核数、内存的费用。   |
-| OSS存储      | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                       |
-| NAT网关      | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                      |
+ACS集群部署场景下模型服务部署过程中主要包括以下两块的费用：
+
+1. 模型服务运行长期使用的资源费用。 
+   - 模型运行Pod相关费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为ModelDeployment的资源，这部分包括Gpu、Cpu核数、内存的费用，具体取决于使用数量。 
+   - OSS Bucket的存储费用。 
+   - ACS集群相关控制面和集群管控中用到的SLB、NATGateway、EIP费用。
+
+2. 模型服务部署时产生的一次性费用，ACS计费可参见计费说明。 
+   - 模型权重同步时Job产生的费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为SyncModelWeightJob的资源，对应Pod Cpu核数、内存和挂载磁盘的费用。这里需要注意的是，模型权重同步为一次性费用，后续重复部署可以选择已有Bucket，然后跳过模型权重同步的过程。 
+   - 服务部署时Job产生的费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为DeployYamlJob的资源，对应Pod Cpu核数、内存的费用。
 
 ### ACK集群部署场景
-
-| 资源类型  | 计费模式 | 关键配置说明                                     |
-|-------|------|--------------------------------------------|
-| ACK集群 | 按量付费 | 根据所选GPU类型和数量计费，GU8TF/GU8TEF/P16EN规格不同价格不同      |
-| OSS存储 | 按量付费 | 存储模型文件，建议选择与集群同地域的存储类型                     |
-| NAT网关 | 按量付费 | 当开启公网访问时自动创建，按使用时长和带宽计费                    |
+ACK集群部署主要计费项为ACK集群对应的ECS Worker节点的费用，这个是固定的按Worker节点的规格来计费，对应的费用预估如下：
+![img_2.png](img_2.png)
+1. 集群节点池费用，ACK集群对应的ECS Worker节点的费用，和ECS计费规则一致。 
+2. OSS Bucket的存储费用。 
+3. ACK集群控制面和集群管控中用到的SLB、NATGateway、EIP费用。
 
 ## RAM账号所需权限
 
-部署实例需要对部分阿里云资源进行访问和创建操作。因此您的账号需要包含如下资源的权限。且需要开通ACS服务，开通后可以在ACS控制台右上角看到：
-**开通状态：GPU 按量付费已开通, GPU 容量预留已开通, CPU 按量付费已开通**。
-
-| 权限策略名称                          | 备注                         |
-|---------------------------------|----------------------------|
-| AliyunECSFullAccess             | 管理云服务器服务（ECS）的权限           |
-| AliyunVPCFullAccess             | 管理专有网络（VPC）的权限             |
-| AliyunROSFullAccess             | 管理资源编排服务（ROS）的权限           |
-| AliyunCSFullAccess              | 管理容器服务（CS）的权限              |
-| AliyunComputeNestUserFullAccess | 管理计算巢服务（ComputeNest）的用户侧权限 |
-| AliyunOSSFullAccess             | 管理网络对象存储服务（OSS）的权限         |
-
-除此之外，**部署前需要联系PDSA添加GPU白名单。**
+Ram账号所需的权限见[官网文档](https://help.aliyun.com/zh/compute-nest/use-cases/computing-nest-model-market-container-cluster-deployment-best-practices)中部署权限部分。
 
 ## 部署流程
 
