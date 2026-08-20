@@ -248,7 +248,40 @@ spec:
   loadMetadata: true
 ```
 
-## Benchmark压测
+## 性能测试
+
+### 使用EvalScope压测(推荐)
+
+[EvalScope](https://evalscope.readthedocs.io/zh-cn/latest/index.html)是魔搭社区推出的模型评测框架，其`perf`压测工具原生支持带api-key的模型服务，**无需重新部署模型服务**。您可以通过[压测服务](https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-13c1c7d4aab245b5aa46/4?type=user&isRecommend=true)一键拉起一台已预装EvalScope的ECS作为压测客户端（建议与模型服务位于同一VPC，以便通过内网地址访问模型服务），部署完成后直接登录该实例对已部署的模型服务发起压测，具体压测操作细节请参考压测服务对应的文档。
+
+若需自行安装EvalScope，可在压测ECS上执行下面的命令。
+
+   ```shell
+   pip install 'evalscope[perf]' -U
+   ```
+
+以QwQ-32B为例，执行下面的命令即可得到模型服务性能测试结果，可根据参数说明自行修改。
+
+   ```shell
+   evalscope perf \
+   --url "http://<模型服务内网地址>:8000/v1/chat/completions" \ # 模型服务调用地址
+   --api-key "<Api_Key>" \ # 部署服务实例后，在服务实例页面可获取Api_Key
+   --model "Qwen/QwQ-32B" \ # 部署时的served-model-name
+   --api openai \
+   --dataset random \ # 使用随机数据集生成请求
+   --number 400 \ # 总共发送400个请求
+   --parallel 20 \ # 并发数为20，模拟20个并发请求
+   --max-tokens 4096 \ # 最大输出长度
+   --min-prompt-length 128 \ # 最小输入长度
+   --max-prompt-length 1024 \ # 最大输入长度
+   --tokenizer-path Qwen/QwQ-32B # 用于统计token数的tokenizer
+   ```
+
+更多参数说明请参考[EvalScope压测参数文档](https://evalscope.readthedocs.io/zh-cn/latest/user_guides/stress_test/parameters.html)。
+
+压测结束后，EvalScope会在终端输出吞吐率（Throughput）、TTFT（首token延迟）、TPOT（每token输出延迟）等关键性能指标，并自动将结果保存到当前目录下的`outputs`文件夹中。
+
+### 使用vLLM Benchmark压测(供参考)
 
 本服务基采用vllm自带的benchmark进行测试，采用的压测数据集：[https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files](https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files)，
 整体压测流程：
