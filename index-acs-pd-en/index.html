@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>PD-Disaggregated Deployment on Container Clusters - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#pd-disaggregated-deployment-on-container-clusters">PD-Disaggregated Deployment on Container Clusters</a></li>
+              
+                  <li><a href="#overview">Overview</a></li>
+                  
+              
+                  <li><a href="#architecture">Architecture</a></li>
+                  
+              
+                  <li><a href="#billing">Billing</a></li>
+                  
+              
+                  <li><a href="#required-ram-account-permissions">Required RAM Account Permissions</a></li>
+                  
+              
+                  <li><a href="#pd-disaggregated-configuration-estimation">PD-Disaggregated Configuration Estimation</a></li>
+                  
+              
+                  <li><a href="#deployment-steps">Deployment Steps</a></li>
+                  
+              
+                  <li><a href="#usage-guide">Usage Guide</a></li>
+                  
+                      <li class="li-h3"><a href="#private-network-api-access">Private Network API Access</a></li>
+                  
+                      <li class="li-h3"><a href="#public-network-api-access">Public Network API Access</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="pd-disaggregated-deployment-on-container-clusters">PD-Disaggregated Deployment on Container Clusters</h1>
+<h2 id="overview">Overview</h2>
+<p>This solution is jointly developed by ComputeNest and the ACS Performance Optimization Team, providing an out-of-the-box PD-disaggregated (Prefill-Decode disaggregated) deployment solution for Large Language Models (LLMs). It enables production-grade, high-performance inference services without the need to manually configure complex infrastructure. Built on Alibaba Cloud Container Compute Service (ACS) clusters, this solution leverages the PD-disaggregated architecture along with Expert Parallelism optimization, delivering ultimate performance for MoE (Mixture of Experts) models.</p>
+<p>Currently supported models include the Qwen, DeepSeek, GLM series and other full-scale models for rapid deployment.</p>
+<h2 id="architecture">Architecture</h2>
+<p><img alt="arch_pd.png" src="../arch_pd.png" /></p>
+<p>The PD-disaggregated deployment architecture consists of two main layers: the <strong>Scheduling Layer</strong> and the <strong>Inference Layer</strong>.</p>
+<ul>
+<li><strong>Scheduling Layer</strong>: Managed by the Scheduler (LWS). External traffic is routed here via the Service, and the scheduler dispatches requests to the Inference Layer.</li>
+<li><strong>Inference Layer</strong>: Split into two stages — Prefill and Decode. The Prefill stage processes input tokens in parallel, then passes the intermediate results (KV Cache) to the Decode stage for autoregressive token-by-token generation.</li>
+</ul>
+<p>The key advantage of this disaggregated architecture is that the Prefill stage is compute-intensive, while the Decode stage is memory-bandwidth-intensive with high GPU memory requirements. By decoupling the two, each can be scaled independently. A typical configuration is 2P1D (2 Prefill instances + 1 Decode instance), where the Decode side uses tensor parallelism across multiple GPUs (e.g., 16 GPUs) to expand available memory, thereby supporting efficient inference for ultra-large-scale models.</p>
+<h2 id="billing">Billing</h2>
+<p>The ComputeNest service itself is free of charge. You only pay for the resources consumed during deployment, and the estimated costs are displayed during the cost estimation phase.</p>
+<p>ACS clusters use a serverless billing model, where deployed Pods are billed based on usage and duration. The cost estimation is shown below:
+<img alt="acs_pd_1" src="../acs_pd_1.png" /></p>
+<p>The costs for model service deployment on ACS clusters mainly consist of two parts:</p>
+<ol>
+<li><strong>Ongoing resource costs for running the model service:</strong></li>
+<li>Pod-related costs for model inference, corresponding to resource type <code>ALIYUN::ACS::ApplicationPod</code> with usage labeled as <code>PrefillModelDeployment</code> and <code>DecodeModelDeployment</code> in the figure above. This includes GPU, CPU cores, and memory costs, depending on the quantity used.</li>
+<li>OSS Bucket storage costs.</li>
+<li>
+<p>SLB, NAT Gateway, and EIP costs for the ACS cluster control plane and cluster management.</p>
+</li>
+<li>
+<p><strong>One-time costs incurred during model service deployment</strong> (refer to ACS billing documentation for details):</p>
+</li>
+<li>Costs for the model weight synchronization Job, corresponding to resource type <code>ALIYUN::ACS::ApplicationPod</code> with usage labeled as <code>SyncModelWeightJob</code> in the figure above, including Pod CPU cores, memory, and attached disk costs. Note that model weight synchronization is a one-time cost — for subsequent deployments, you can select an existing Bucket and skip the weight synchronization process.</li>
+<li>Costs for the deployment Job, corresponding to resource type <code>ALIYUN::ACS::ApplicationPod</code> with usage labeled as <code>DeployYamlJob</code> in the figure above, including Pod CPU cores and memory costs.</li>
+</ol>
+<h2 id="required-ram-account-permissions">Required RAM Account Permissions</h2>
+<p>For the required RAM account permissions, refer to the deployment permissions section in the <a href="https://help.aliyun.com/zh/compute-nest/use-cases/computing-nest-model-market-container-cluster-deployment-best-practices">official documentation</a>.</p>
+<h2 id="pd-disaggregated-configuration-estimation">PD-Disaggregated Configuration Estimation</h2>
+<p>This solution provides a <strong>PD-Disaggregated Configuration Estimation Tool</strong> to help you quickly determine the number of Prefill and Decode nodes and their resource configurations based on your workload. Usage instructions:</p>
+<ol>
+<li>
+<p>In the "PD-Disaggregated Configuration Estimation" section, enter the <strong>average input token count</strong>, <strong>average output token count</strong>, and <strong>expected average TPOT latency</strong>, then click the <strong>Start Estimation and Fill Configuration</strong> button.
+   <img alt="PD Configuration Estimation" src="../image.png" /></p>
+</li>
+<li>
+<p>The system will display the recommended Prefill and Decode node configurations (including node count, GPU specifications, etc.) in a popup. After confirming the settings, click <strong>Confirm and Fill</strong> to automatically populate the Prefill and Decode configuration forms below.
+   <img alt="Estimation Results" src="../image-1.png" /></p>
+</li>
+</ol>
+<h2 id="deployment-steps">Deployment Steps</h2>
+<ol>
+<li>
+<p>Click the <a href="https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&amp;ServiceId=service-c8bf02afe7544025be47">deployment link</a>. Fill in the parameters as prompted on the page. You can view the pricing details, and after confirming the parameters, click <strong>Next: Confirm Order</strong>.
+    <img alt="Parameter Configuration" src="../image-2.png" /></p>
+</li>
+<li>
+<p>After clicking <strong>Next: Confirm Order</strong>, you can also view the price preview. Then click <strong>Deploy Now</strong> and wait for the deployment to complete.
+   <img alt="alt text" src="../image-3.png" /></p>
+</li>
+<li>
+<p>Once the deployment is complete, you can start using the service. Go to the service instance details page to view the private network access guide. If you selected <strong>Enable Public Access</strong>, you will also see the public access guide.
+   <img alt="result.png" src="../result.png" /></p>
+</li>
+</ol>
+<h2 id="usage-guide">Usage Guide</h2>
+<h3 id="private-network-api-access">Private Network API Access</h3>
+<ol>
+<li>Access the <strong>Private API Address</strong> shown on the overview page from an ECS instance within the same VPC as the server. Example:</li>
+</ol>
+<pre><code class="language-shell"># Private network authenticated request with streaming. To disable streaming, remove the stream parameter.
+curl http://{$PrivateIP}:8000/v1/chat/completions \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;Authorization: Bearer ${API_KEY}&quot; \
+  -d '{
+    &quot;model&quot;: &quot;ds&quot;,
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;Write a letter to my daughter from the year 2035, encouraging her to study science and technology well, to be a master of technology, and to drive technological and economic development. She is currently in 3rd grade.&quot;
+      }
+    ],
+    &quot;max_tokens&quot;: 1024,
+    &quot;temperature&quot;: 0,
+    &quot;top_p&quot;: 0.9,
+    &quot;seed&quot;: 10,
+    &quot;stream&quot;: true
+  }'
+</code></pre>
+<h3 id="public-network-api-access">Public Network API Access</h3>
+<ol>
+<li>To access the API via public network, if you selected <strong>Enable Public Access</strong> during deployment, you can directly access it through the public IP. Example:</li>
+</ol>
+<pre><code class="language-shell">curl http://${PublicIp}:8000/v1/chat/completions \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;model&quot;: &quot;ds&quot;,
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;Write a letter to my daughter from the year 2035, encouraging her to study science and technology well, to be a master of technology, and to drive technological and economic development. She is currently in 3rd grade.&quot;
+      }
+    ],
+    &quot;max_tokens&quot;: 1024,
+    &quot;temperature&quot;: 0,
+    &quot;top_p&quot;: 0.9,
+    &quot;seed&quot;: 10,
+    &quot;stream&quot;: true
+  }'
+</code></pre>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-08-20 08:58:22.186341+00:00
+  -->
+</body>
+</html>

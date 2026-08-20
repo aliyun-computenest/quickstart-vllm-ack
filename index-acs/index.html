@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="x-ua-compatible" content="ie=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="计算巢是阿里云开放给企业应用服务商的服务管理平台。服务商能够在计算巢上发布私有化部署服务，为其客户提供云上软件一键部署的能力；同时也支持全托管模式的服务，赋能服务商托管其客户资源。">
+  <title>基于容器集群集群的大模型部署文档 - Aliyun 计算巢 x Demo</title>
+
+  <link rel="shortcut icon" href="../img/favicon.ico">
+
+  <link rel="stylesheet" href="https://unpkg.com/purecss@1.0.0/build/pure-min.css">
+  <link rel="stylesheet" href="../css/theme.css">
+  
+
+  
+
+  
+  
+
+  
+    <script src="../search/main.js"></script>
+  
+
+  
+
+  <script src="../js/highlight.min.js"></script>
+  <script>hljs.highlightAll();</script>
+</head>
+
+<body>
+  <div class="container">
+    <div class="nav">
+      <div class="nav-inner">
+        <div class="logo">
+          <img src="./img/logo-2x.png">
+        </div>
+        <div class="nav-list">
+          <ul>
+          
+              <li><a href="#_1">基于容器集群集群的大模型部署文档</a></li>
+              
+                  <li><a href="#_2">部署说明</a></li>
+                  
+              
+                  <li><a href="#_3">整体架构</a></li>
+                  
+              
+                  <li><a href="#_4">计费说明</a></li>
+                  
+                      <li class="li-h3"><a href="#acs">ACS集群部署场景</a></li>
+                  
+                      <li class="li-h3"><a href="#ack">ACK集群部署场景</a></li>
+                  
+              
+                  <li><a href="#ram">RAM账号所需权限</a></li>
+                  
+              
+                  <li><a href="#_5">部署流程</a></li>
+                  
+              
+                  <li><a href="#_6">使用说明</a></li>
+                  
+                      <li class="li-h3"><a href="#api">私网API访问</a></li>
+                  
+                      <li class="li-h3"><a href="#api_1">公网API访问</a></li>
+                  
+                      <li class="li-h3"><a href="#gpupod">快速更换模型、GPU规格、Pod数量</a></li>
+                  
+                      <li class="li-h3"><a href="#_7">手动重新部署模型</a></li>
+                  
+              
+                  <li><a href="#_8">进阶教程</a></li>
+                  
+              
+                  <li><a href="#_9">性能测试</a></li>
+                  
+                      <li class="li-h3"><a href="#evalscope">使用EvalScope压测(推荐)</a></li>
+                  
+                      <li class="li-h3"><a href="#vllm-benchmark">使用vLLM Benchmark压测(供参考)</a></li>
+                  
+              
+          
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="content theme-github">
+      
+      <div class="content-inner">        
+        
+        <h1 id="_1">基于容器集群集群的大模型部署文档</h1>
+<h2 id="_2">部署说明</h2>
+<p>本方案通过阿里云计算巢服务实现开箱即用的大模型推理服务部署，支持以下场景：
+- <strong>新建ACS/ACK集群</strong>：用户可以选择直接创建一个ACS/ACK集群，计算巢会在用户账号下一键创建ACS/ACK集群和OSS Bucket，完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。
+- <strong>选择已有ACS、ACK集群</strong>：用户可以选择使用已有的ACS或者ACK集群，计算巢会在用户账号下创建OSS Bucket（也可以选择已有的Bucket），完成了模型上传和Bucket的挂载后会自动部署模型，最后会自动创建负载均衡实现内、公网的访问。</p>
+<p>本方案基于以下核心组件：</p>
+<ul>
+<li><strong>vLLM</strong>：提供高性能并行推理能力，支持低延迟、高吞吐的LLM推理（支持Qwen、DeepSeek全系列模型）</li>
+<li><strong>SGLang</strong>: SGLang 是一个适用于大语言模型和视觉语言模型的快速服务框架。</li>
+<li><strong>ACS集群</strong>：提供全托管的Kubernetes环境，支持Serverless工作负载弹性伸缩</li>
+<li><strong>P16EN/GU8TF GPU加速</strong>：支持多种算力规格，满足不同模型规模的推理需求</li>
+</ul>
+<p>部署后，用户可通过私有/公网API调用模型服务，资源利用率提升数倍，开发者无需关注底层容器编排与资源调度，仅需在计算巢控制台页面选择模型即可完成一键部署。</p>
+<h2 id="_3">整体架构</h2>
+<p><img alt="arch.png" src="../arch.png" /></p>
+<h2 id="_4">计费说明</h2>
+<p>计算巢服务本身是免费的，客户只用为部署过程中使用到的资源付费，具体费用在费用预估时可以看到，这其中ACS集群和ACK集群的计费模型不同，下面会分别进行说明。</p>
+<h3 id="acs">ACS集群部署场景</h3>
+<p>ACS集群是Serverless的计费方式，其中部署的Pod都是按使用量和使用时间来计费，对应的费用预估如下所示：
+<img alt="img_1.png" src="../img_1.png" /></p>
+<p>ACS集群部署场景下模型服务部署过程中主要包括以下两块的费用：</p>
+<ol>
+<li>模型服务运行长期使用的资源费用。 </li>
+<li>模型运行Pod相关费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为ModelDeployment的资源，这部分包括Gpu、Cpu核数、内存的费用，具体取决于使用数量。 </li>
+<li>OSS Bucket的存储费用。 </li>
+<li>
+<p>ACS集群相关控制面和集群管控中用到的SLB、NATGateway、EIP费用。</p>
+</li>
+<li>
+<p>模型服务部署时产生的一次性费用，ACS计费可参见计费说明。 </p>
+</li>
+<li>模型权重同步时Job产生的费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为SyncModelWeightJob的资源，对应Pod Cpu核数、内存和挂载磁盘的费用。这里需要注意的是，模型权重同步为一次性费用，后续重复部署可以选择已有Bucket，然后跳过模型权重同步的过程。 </li>
+<li>服务部署时Job产生的费用，如上图中资源类型为ALIYUN::ACS::ApplicationPod，资源用途为DeployYamlJob的资源，对应Pod Cpu核数、内存的费用。</li>
+</ol>
+<h3 id="ack">ACK集群部署场景</h3>
+<p>ACK集群部署主要计费项为ACK集群对应的ECS Worker节点的费用，这个是固定的按Worker节点的规格来计费，对应的费用预估如下：
+<img alt="img_2.png" src="../img_2.png" />
+1. 集群节点池费用，ACK集群对应的ECS Worker节点的费用，和ECS计费规则一致。 
+2. OSS Bucket的存储费用。 
+3. ACK集群控制面和集群管控中用到的SLB、NATGateway、EIP费用。</p>
+<h2 id="ram">RAM账号所需权限</h2>
+<p>Ram账号所需的权限见<a href="https://help.aliyun.com/zh/compute-nest/use-cases/computing-nest-model-market-container-cluster-deployment-best-practices">官网文档</a>中部署权限部分。</p>
+<h2 id="_5">部署流程</h2>
+<ol>
+<li>
+<p>单击<a href="https://computenest.console.aliyun.com/service/instance/create/cn-hangzhou?type=user&amp;ServiceId=service-c8bf02afe7544025be47">部署链接</a>
+。根据界面提示填写参数，可以看到对应询价明细，确认参数后点击<strong>下一步：确认订单</strong>。
+    <img alt="deploy.png" src="../deploy.png" />
+    这里也可以选择已有ACS集群,如下所示：
+    <img alt="deploy_existing_cluster.png" src="../deploy_existing_cluster.png" /></p>
+</li>
+<li>
+<p>点击<strong>下一步：确认订单</strong>后可以也看到价格预览，随后点击<strong>立即部署</strong>，等待部署完成。
+   <img alt="price.png" src="../price.png" /></p>
+</li>
+<li>
+<p>等待部署完成后就可以开始使用服务，进入服务实例详情查看如何私网访问指导。如果选择了<strong>支持公网访问</strong>，则能看到公网访问指导。
+   <img alt="result.png" src="../result.png" /></p>
+</li>
+</ol>
+<h2 id="_6">使用说明</h2>
+<h3 id="api">私网API访问</h3>
+<ol>
+<li>在和服务器同一VPC内的ECS中访问概览页的<strong>私网API地址</strong>。访问示例如下：</li>
+</ol>
+<pre><code class="language-shell"># 私网有认证请求，流式访问，若想关闭流式访问，删除stream即可。
+curl http://{$PrivateIP}:8000/v1/chat/completions \
+  -H &quot;Content-Type: application/json&quot; \
+  -H &quot;Authorization: Bearer ${API_KEY}&quot; \
+  -d '{
+    &quot;model&quot;: &quot;ds&quot;,
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;给闺女写一份来自未来2035的信，同时告诉她要好好学习科技，做科技的主人，推动科技，经济发展；她现在是3年级&quot;
+      }
+    ],
+    &quot;max_tokens&quot;: 1024,
+    &quot;temperature&quot;: 0,
+    &quot;top_p&quot;: 0.9,
+    &quot;seed&quot;: 10,
+    &quot;stream&quot;: true
+  }'
+</code></pre>
+<h3 id="api_1">公网API访问</h3>
+<ol>
+<li>如果想通过公网访问API地址，部署时如果选择了<strong>支持公网访问</strong>，则直接通过公网IP访问即可，示例如下：</li>
+</ol>
+<pre><code class="language-shell">curl http://${PublicIp}:8000/v1/chat/completions \
+  -H &quot;Content-Type: application/json&quot; \
+  -d '{
+    &quot;model&quot;: &quot;ds&quot;,
+    &quot;messages&quot;: [
+      {
+        &quot;role&quot;: &quot;user&quot;,
+        &quot;content&quot;: &quot;给闺女写一份来自未来2035的信，同时告诉她要好好学习科技，做科技的主人，推动科技，经济发展；她现在是3年级&quot;
+      }
+    ],
+    &quot;max_tokens&quot;: 1024,
+    &quot;temperature&quot;: 0,
+    &quot;top_p&quot;: 0.9,
+    &quot;seed&quot;: 10,
+    &quot;stream&quot;: true
+  }'
+</code></pre>
+<ol>
+<li>如果未选择<strong>支持公网访问</strong>，则需要手动在集群中创建一个<code>LoadBalance</code>
+，示例如下（deepseek-r1，如果是qwq-32b，labels.app需要改为qwq-32b)：</li>
+</ol>
+<pre><code class="language-yaml">apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    service.beta.kubernetes.io/alibaba-cloud-loadbalancer-address-type: &quot;internet&quot;
+    service.beta.kubernetes.io/alibaba-cloud-loadbalancer-ip-version: ipv4
+  labels:
+    app: deepseek-r1
+  name: svc-public
+  namespace: llm-model
+spec:
+  externalTrafficPolicy: Local
+  ports:
+    - name: serving
+      port: 8000
+      protocol: TCP
+      targetPort: 8000
+  selector:
+    app: deepseek-r1
+  type: LoadBalancer
+</code></pre>
+<h3 id="gpupod">快速更换模型、GPU规格、Pod数量</h3>
+<p><strong>计算巢支持实例变配功能，可以一键更换模型、GPU规格、Pod数量，具体参考如下说明：</strong></p>
+<p>服务实例部署完成后，进入服务实例详情页面，点击右上角的<strong>修改配置</strong>按钮，选择需要修改的参数，修改后可以查看价格和变配前后的参数变化，最后点击<strong>确认</strong>。（变配GPU前请确保原所选地域与可用区有库存）
+<img alt="update_instance_1.png" src="../update_instacne_1.png" /></p>
+<p><img alt="update_instance_2.png" src="../update_instance_2.png" /></p>
+<p><img alt="update_instance_3.png" src="../update_instance_3.png" /></p>
+<p><img alt="update_instance_4.png" src="../update_instance_4.png" /></p>
+<p>实例状态由<strong>变配中</strong>变为<strong>已成功</strong>表示变配成功。
+<img alt="update_instance_5.png" src="../update_instance_5.png" /></p>
+<h3 id="_7">手动重新部署模型</h3>
+<p><strong>对于不更换模型、仅改变部署参数的情况，可以参考如下说明重新部署模型：</strong>
+1. 进入计算巢控制台，点击<strong>服务实例</strong>，点击<strong>资源</strong>，找到对应的ACS实例，点击进入。
+   <img alt="acs.png" src="../acs.png" />
+2. 进入ACS控制台后点击<strong>工作负载</strong>，查看<strong>无状态</strong>，以qwq-32b为例：可以看到对应的Deployment。
+   <img alt="qwq-deploy.png" src="../qwq-deploy.png" />
+3. 点击该Deployment后进入详情页面，点击编辑可以修改一些基本参数，或者点击查看yaml修改后更新。
+   <img alt="modify_deploy.png" src="../modify_deploy.png" /></p>
+<p><strong>对于更换模型的情况，可以参考如下文档：</strong></p>
+<p><a href="https://help.aliyun.com/document_detail/2864595.html">ACS集群形态的LLM大模型推理镜像使用指导_PG1阿里云产品-阿里云帮助中心</a>
+<a href="https://help.aliyun.com/zh/cs/user-guide/use-acs-gpu-computing-power-to-build-deepseek-full-model-reasoning-service">使用ACS GPU算力构建DeepSeek满血版模型推理服务_容器计算服务(ACS)-阿里云帮助中心</a></p>
+<h2 id="_8">进阶教程</h2>
+<ul>
+<li>除了部署服务实例时可以选择<strong>Fluid配置</strong>，也可以后续自定义配置Fluid实现模型加速</li>
+</ul>
+<p>Fluid 是一种基于 Kubernetes 原生的分布式数据集编排和加速引擎，旨在优化数据密集型应用（如AI推理、大模型训练等场景）的性能。如果服务需要在弹性伸缩时快速启动，
+  可以考虑部署Fluid，具体可以参考文档：<a href="https://help.aliyun.com/zh/cs/user-guide/using-acs-gpu-computing-power-to-build-a-distributed-deepseek-full-blood-version-reasoning-service">Fluid</a>。
+  经测试，采用Fluid的加速，根据缓存大小，模型加载速度可以缩短至50%，在应对一些弹性伸缩的场景下，可以快速加载模型，显著提高性能。如下所示，可以仅修改具体的BucketName、ModelName和具体的JindoRuntime参数：</p>
+<pre><code class="language-yaml">apiVersion: data.fluid.io/v1alpha1
+kind: Dataset
+metadata:
+  name: llm-model
+  namespace: llm-model
+spec:
+  placement: Shared
+  mounts:
+    - mountPoint: oss://${BucketName}/llm-model
+      options:
+        fs.oss.endpoint: oss-${RegionId}-internal.aliyuncs.com
+      name: models
+      path: &quot;/&quot;
+      encryptOptions:
+        - name: fs.oss.accessKeyId
+          valueFrom:
+            secretKeyRef:
+              name: oss-secret
+              key: akId
+        - name: fs.oss.accessKeySecret
+          valueFrom:
+            secretKeyRef:
+              name: oss-secret
+              key: akSecret
+---
+apiVersion: data.fluid.io/v1alpha1
+kind: JindoRuntime
+metadata:
+  name: llm-model
+  namespace: llm-model
+spec:
+  networkmode: ContainerNetwork
+  replicas: ${JindoRuntimeReplicas} # 设置副本数,根据实际的模型磁盘占用进行设置
+  master:
+    podMetadata:
+      labels:
+        alibabacloud.com/compute-class: performance
+        alibabacloud.com/compute-qos: default
+  worker:
+    podMetadata:
+      labels:
+        alibabacloud.com/compute-class: performance
+        alibabacloud.com/compute-qos: default
+      annotations:
+        kubernetes.io/resource-type: serverless
+    resources:
+      requests:
+        cpu: 16
+        memory: 128Gi
+      limits:
+        cpu: 16
+        memory: 128Gi
+  tieredstore:
+    levels:
+      - mediumtype: MEM
+        path: /dev/shm
+        volumeType: emptyDir
+        quota: 128Gi
+        high: &quot;0.99&quot;
+        low: &quot;0.95&quot;
+---
+apiVersion: data.fluid.io/v1alpha1
+kind: DataLoad
+metadata:
+  name: llm-model
+  namespace: llm-model
+spec:
+  dataset:
+    name: llm-model
+    namespace: llm-model
+  loadMetadata: true
+</code></pre>
+<h2 id="_9">性能测试</h2>
+<h3 id="evalscope">使用EvalScope压测(推荐)</h3>
+<p><a href="https://evalscope.readthedocs.io/zh-cn/latest/index.html">EvalScope</a>是魔搭社区推出的模型评测框架，其<code>perf</code>压测工具原生支持带api-key的模型服务，<strong>无需重新部署模型服务</strong>。您可以通过<a href="https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-13c1c7d4aab245b5aa46/4?type=user&amp;isRecommend=true">压测服务</a>一键拉起一台已预装EvalScope的ECS作为压测客户端（建议与模型服务位于同一VPC，以便通过内网地址访问模型服务），部署完成后直接登录该实例对已部署的模型服务发起压测，具体压测操作细节请参考压测服务对应的文档。</p>
+<p>以QwQ-32B为例，执行下面的命令即可得到模型服务性能测试结果，可根据参数说明自行修改。</p>
+<p><code>shell
+   evalscope perf \
+   --url "http://&lt;模型服务内网地址&gt;:8000/v1/chat/completions" \ # 模型服务调用地址
+   --api-key "&lt;Api_Key&gt;" \ # 部署服务实例后，在服务实例页面可获取Api_Key
+   --model "Qwen/QwQ-32B" \ # 部署时的served-model-name
+   --api openai \
+   --dataset random \ # 使用随机数据集生成请求
+   --number 400 \ # 总共发送400个请求
+   --parallel 20 \ # 并发数为20，模拟20个并发请求
+   --max-tokens 4096 \ # 最大输出长度
+   --min-prompt-length 128 \ # 最小输入长度
+   --max-prompt-length 1024 \ # 最大输入长度
+   --tokenizer-path Qwen/QwQ-32B # 用于统计token数的tokenizer</code></p>
+<p>更多参数说明请参考<a href="https://evalscope.readthedocs.io/zh-cn/latest/user_guides/stress_test/parameters.html">EvalScope压测参数文档</a>。</p>
+<p>压测结束后，EvalScope会在终端输出吞吐率（Throughput）、TTFT（首token延迟）、TPOT（每token输出延迟）等关键性能指标，并自动将结果保存到当前目录下的<code>outputs</code>文件夹中。</p>
+<h3 id="vllm-benchmark">使用vLLM Benchmark压测(供参考)</h3>
+<p>本服务基采用vllm自带的benchmark进行测试，采用的压测数据集：<a href="https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files">https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split/files</a>，
+整体压测流程：</p>
+<ol>
+<li>创建一个Deployment，使用vllm-benchmark镜像。在容器中执行数据集下载、压测操作
+   使用下面的yaml创建Deployment前需要替换部分参数</li>
+</ol>
+<table>
+<thead>
+<tr>
+<th>替换参数</th>
+<th>参数含义</th>
+<th>参数值示例/说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong><code>$POD_IP</code></strong></td>
+<td>运行 deepseek-r1 的 Pod IP</td>
+<td><code>kubectl get pod -n llm-model -l app=$(kubectl get deployment -n llm-model -l app -o jsonpath='{.items[0].spec.template.metadata.labels.app}') -o jsonpath='{.items[0].status.podIP}'</code></td>
+</tr>
+<tr>
+<td><strong><code>$API_KEY</code></strong></td>
+<td>服务认证密钥</td>
+<td>在服务实例详情页中获取（形如 <code>sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</code>）</td>
+</tr>
+<tr>
+<td><strong><code>$MODEL_PATH</code></strong></td>
+<td>模型存储路径</td>
+<td>QwQ-32b: <code>/llm-model/Qwen/QwQ-32B</code><br>Qwen3-32b: <code>/llm-model/Qwen/Qwen3-32B</code><br>Qwen3-235b-A22b: <code>/llm-model/Qwen/Qwen3-235B-A22B</code><br>DeepSeek-R1_671b: <code>/llm-model/deepseek-ai/DeepSeek-R1</code><br>DeepSeek-R1_32b: <code>/llm-model/deepseek-ai/DeepSeek-R1-Distill-Qwen-32B</code><br>DeepSeek-R1_70b: <code>/llm-model/deepseek-ai/DeepSeek-R1-Distill-Llama-70B</code></td>
+</tr>
+<tr>
+<td><strong><code>$SERVED_MODEL_NAME</code></strong></td>
+<td>服务部署的模型名称</td>
+<td>QwQ-32b: <code>Qwen/QwQ-32B</code><br>Qwen3-32b: <code>Qwen/Qwen3-32B</code><br>Qwen3-235b-A22b: <code>Qwen/Qwen3-235B-A22B</code><br>DeepSeek-R1_671b: <code>deepseek-ai/DeepSeek-R1</code><br>DeepSeek-R1_32b: <code>deepseek-ai/DeepSeek-R1-Distill-Qwen-32B</code><br>DeepSeek-R1_70b: <code>deepseek-ai/DeepSeek-R1-Distill-Llama-70B</code></td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-yaml">apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vllm-benchmark
+  namespace: llm-model
+  labels:
+    app: vllm-benchmark
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vllm-benchmark
+  template:
+    metadata:
+      labels:
+        app: vllm-benchmark
+    spec:
+      volumes:
+        - name: llm-model
+          persistentVolumeClaim:
+            claimName: llm-model
+      containers:
+        - name: vllm-benchmark
+          image: kube-ai-registry.cn-shanghai.cr.aliyuncs.com/kube-ai/vllm-benchmark:v1
+          command:
+            - &quot;sh&quot;
+            - &quot;-c&quot;
+            - |
+              # 安装依赖
+              yum install -y epel-release &amp;&amp; \
+              yum install -y git git-lfs &amp;&amp; \
+              git lfs install &amp;&amp;
+
+              # 下载数据集
+              git clone https://www.modelscope.cn/datasets/gliang1001/ShareGPT_V3_unfiltered_cleaned_split.git /root/ShareGPT_V3_unfiltered_cleaned_split
+
+              # 执行基准测试
+              export OPENAI_API_KEY=$API_KEY
+              python3 /root/vllm/benchmarks/benchmark_serving.py \
+                --backend vllm \
+                --model $MODEL_PATH \
+                --served-model-name $SERVED_MODEL_NAME \
+                --trust-remote-code \
+                --dataset-name sharegpt \
+                --dataset-path /root/ShareGPT_V3_unfiltered_cleaned_split/ShareGPT_V3_unfiltered_cleaned_split.json \
+                --sonnet-input-len 1024 \
+                --sonnet-output-len 6 \
+                --sonnet-prefix-len 50 \
+                --num-prompts 200 \
+                --request-rate 1 \
+                --host $POD_IP \
+                --port 8000 \
+                --endpoint /v1/completions \
+                --save-result
+
+              # 保持容器运行
+              sleep inf
+          volumeMounts:
+            - mountPath: /llm-model
+              name: llm-model
+</code></pre>
+<ol>
+<li>直接在acs控制台查看容器日志或者进入容器查看容器日志
+   <img alt="img.png" src="../console_log.png" /></li>
+</ol>
+<p>测试结果示例：
+    <code>plaintext
+    ============ Serving Benchmark Result ============
+    Successful requests:                     200       
+    Benchmark duration (s):                  272.15    
+    Total input tokens:                      43390     
+    Total generated tokens:                  39980     
+    Request throughput (req/s):              0.73      
+    Output token throughput (tok/s):         146.91    
+    Total Token throughput (tok/s):          306.34    
+    ---------------Time to First Token----------------
+    Mean TTFT (ms):                          246.46    
+    Median TTFT (ms):                        244.58    
+    P99 TTFT (ms):                           342.11    
+    -----Time per Output Token (excl. 1st token)------
+    Mean TPOT (ms):                          130.30    
+    Median TPOT (ms):                        130.12    
+    P99 TPOT (ms):                           139.09    
+    ---------------Inter-token Latency----------------
+    Mean ITL (ms):                           129.89    
+    Median ITL (ms):                         125.40    
+    P99 ITL (ms):                            173.20    
+    ==================================================</code></p>
+        
+      </div>
+
+      <div class="copyrights">© 2009-2022 Aliyun.com 版权所有</div>
+    </div>
+  </div>
+  
+  <!--
+  MkDocs version      : 1.6.1
+  Docs Build Date UTC : 2026-08-20 08:58:22.243674+00:00
+  -->
+</body>
+</html>
