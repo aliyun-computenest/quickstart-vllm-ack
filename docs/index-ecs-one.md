@@ -160,12 +160,6 @@
 
 [EvalScope](https://evalscope.readthedocs.io/zh-cn/latest/index.html)是魔搭社区推出的模型评测框架，其`perf`压测工具原生支持带api-key的模型服务，**无需重新部署模型服务**。您可以通过[压测服务](https://computenest.console.aliyun.com/service/detail/cn-hangzhou/service-13c1c7d4aab245b5aa46/4?type=user&isRecommend=true)一键拉起一台已预装EvalScope的ECS作为压测客户端，部署完成后直接登录该实例对已部署的模型服务发起压测，具体压测操作细节请参考压测服务对应的文档。
 
-若需自行安装EvalScope，可在压测ECS上执行下面的命令。
-
-   ```shell
-   pip install 'evalscope[perf]' -U
-   ```
-
 以QwQ-32B为例，执行下面的命令即可得到模型服务性能测试结果，可根据参数说明自行修改。
 
    ```shell
